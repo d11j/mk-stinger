@@ -384,10 +384,13 @@ function setupEventListeners() {
     currentOptions.borderWidth = val;
     engine.updateOptions(currentOptions);
   });
+  inputBorderWidth.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
 
   inputHasGlow.addEventListener('change', () => {
     currentOptions.hasGlow = inputHasGlow.checked;
-    engine.updateOptions(currentOptions);
+    engine.updateOptions(currentOptions, true);
   });
 
   // HEX 特有設定
@@ -397,10 +400,13 @@ function setupEventListeners() {
     currentOptions.staggerDelay = val;
     engine.updateOptions(currentOptions);
   });
+  inputHexStagger.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
 
   inputHexRotation.addEventListener('change', () => {
     currentOptions.rotationEffect = inputHexRotation.checked;
-    engine.updateOptions(currentOptions);
+    engine.updateOptions(currentOptions, true);
   });
 
   // LINE WIPE 特有設定
@@ -410,6 +416,9 @@ function setupEventListeners() {
     currentOptions.bandWidth = val;
     engine.updateOptions(currentOptions);
   });
+  inputLineWidth.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
 
   inputLineAngle.addEventListener('input', () => {
     const val = parseInt(inputLineAngle.value, 10);
@@ -417,10 +426,13 @@ function setupEventListeners() {
     currentOptions.angleDeg = val;
     engine.updateOptions(currentOptions);
   });
+  inputLineAngle.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
 
   inputLineSpeedLines.addEventListener('change', () => {
     currentOptions.speedLines = inputLineSpeedLines.checked;
-    engine.updateOptions(currentOptions);
+    engine.updateOptions(currentOptions, true);
   });
 
   // 出力設定: 解像度 / FPS / デュレーション
@@ -435,7 +447,7 @@ function setupEventListeners() {
   selectFps.addEventListener('change', () => {
     const fps = parseInt(selectFps.value, 10) as 30 | 60;
     const dur = parseFloat(inputDuration.value);
-    engine.setConfig(fps, dur);
+    engine.setConfig(fps, dur, true);
     updateObsPanel();
   });
 
@@ -443,7 +455,10 @@ function setupEventListeners() {
     const dur = parseFloat(inputDuration.value);
     valDuration.textContent = `${dur.toFixed(1)} 秒`;
     const fps = parseInt(selectFps.value, 10) as 30 | 60;
-    engine.setConfig(fps, dur);
+    engine.setConfig(fps, dur, false);
+  });
+  inputDuration.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
   });
 
   inputBitrate.addEventListener('input', () => {
@@ -588,6 +603,7 @@ function hideExportModal() {
 // エクスポートのメイン実行
 async function startExport() {
   engine.pause();
+  engine.flushPendingAnalysis();
   showExportModal();
 
   const resKey = selectResolution.value as ResolutionPreset;

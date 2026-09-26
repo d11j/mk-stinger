@@ -37,6 +37,18 @@ export class AnimationEngine {
   private events: EngineEvents = {};
   private isInitialized: boolean = false;
 
+  // 色変更など不透明度・カットポイントに影響を与えないプロパティの判定用
+  private static readonly COLOR_ONLY_KEYS = new Set([
+    'primaryColor',
+    'secondaryColor',
+    'accentColor',
+    'borderColor',
+    'glowColor',
+  ]);
+
+  private renderRafId: number | null = null;
+  private recalculateTimerId: number | null = null;
+
   // 疑似配信画面用のパターンキャンバス
   private sceneACanvas: OffscreenCanvas | null = null;
   private sceneBCanvas: OffscreenCanvas | null = null;
@@ -103,28 +115,59 @@ export class AnimationEngine {
     this.renderCurrentFrame();
   }
 
-  public setConfig(fps: 30 | 60, durationSec: number) {
+  public setConfig(fps: 30 | 60, durationSec: number, immediateAnalysis: boolean = false) {
     const changed = this.fps !== fps || this.durationSec !== durationSec;
     this.fps = fps;
     this.durationSec = durationSec;
     if (changed) {
       this.updateTotalFrames();
-      this.recalculateTransition();
-      this.renderCurrentFrame();
+      if (immediateAnalysis) {
+        this.flushPendingAnalysis();
+        this.recalculateTransition();
+      } else {
+        this.scheduleRecalculateTransition(150);
+      }
+      this.requestRender();
     }
   }
 
   public setPreset(preset: PresetPlugin<any>, options?: any) {
+    this.flushPendingAnalysis();
     this.currentPreset = preset;
     this.currentOptions = options ? { ...options } : { ...preset.defaultOptions };
     this.recalculateTransition();
     this.renderCurrentFrame();
   }
 
-  public updateOptions(options: any) {
+  /**
+   * オプション更新
+   * 色のみの変更であれば、重い全フレームカバレッジ解析 (recalculateTransition) をスキップして即時再描画。
+   * 形状やタイミングの変更時は、スライダー操作中の負荷を抑えるためデバウンスして解析を実行。
+   */
+  public updateOptions(options: any, immediateAnalysis: boolean = false) {
+    const changedKeys = Object.keys(options).filter(
+      (k) => this.currentOptions[k] !== options[k]
+    );
+    if (changedKeys.length === 0) return;
+
     this.currentOptions = { ...this.currentOptions, ...options };
-    this.recalculateTransition();
-    this.renderCurrentFrame();
+
+    // プレビュー表示を即座に（rAF経由で）更新
+    this.requestRender();
+
+    // 変更されたキーが全て色プロパティであれば、カバレッジ解析は完全に不要なのでスキップ
+    const isColorOnly = changedKeys.every((k) => AnimationEngine.COLOR_ONLY_KEYS.has(k));
+    if (isColorOnly) {
+      return;
+    }
+
+    // 幾何学・タイミング等、不透明度やカットポイントに影響する変更の場合
+    if (immediateAnalysis) {
+      this.flushPendingAnalysis();
+      this.recalculateTransition();
+    } else {
+      this.scheduleRecalculateTransition(150);
+    }
   }
 
   public setBackgroundMode(mode: BackgroundMode) {
@@ -192,7 +235,48 @@ export class AnimationEngine {
     }
   }
 
+  /**
+   * requestAnimationFrame によるプレビュー描画のスロットリング
+   * 高頻度の input イベントでも同一フレームでの重複描画を防ぎ 60fps を維持
+   */
+  public requestRender() {
+    if (this.isPlaying) return;
+    if (this.renderRafId !== null) return;
+    this.renderRafId = requestAnimationFrame(() => {
+      this.renderRafId = null;
+      this.renderCurrentFrame();
+    });
+  }
+
+  /**
+   * カバレッジ解析のデバウンス実行
+   */
+  public scheduleRecalculateTransition(delayMs: number = 150) {
+    if (this.recalculateTimerId !== null) {
+      clearTimeout(this.recalculateTimerId);
+    }
+    this.recalculateTimerId = window.setTimeout(() => {
+      this.recalculateTimerId = null;
+      this.recalculateTransition();
+    }, delayMs);
+  }
+
+  /**
+   * 保留中のデバウンス解析があれば即時実行して確定
+   */
+  public flushPendingAnalysis() {
+    if (this.recalculateTimerId !== null) {
+      clearTimeout(this.recalculateTimerId);
+      this.recalculateTimerId = null;
+      this.recalculateTransition();
+    }
+  }
+
   public recalculateTransition() {
+    if (this.recalculateTimerId !== null) {
+      clearTimeout(this.recalculateTimerId);
+      this.recalculateTimerId = null;
+    }
     const w = this.displayCanvas.width;
     const h = this.displayCanvas.height;
     this.transitionAnalysis = this.analyzer.analyze(
