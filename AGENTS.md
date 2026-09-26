@@ -182,6 +182,7 @@ mk-stinger/
     │   └── presets/
     │       ├── index.ts         // プリセット一覧レジストリ
     │       ├── HexAnimation.ts  // 必須要件のHEXハニカム充填
+    │       ├── LineWipeAnimation.ts // 斜めラインワイプ（トラックマット特化・非全面被覆型）
     │       ├── SlashAnimation.ts// 斜めスライス＆スピードライン
     │       ├── IrisAnimation.ts // メカニカルサークルアイリス
     │       └── GlitchAnimation.ts// サイバーグリッド

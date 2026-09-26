@@ -41,6 +41,13 @@ const inputHexStagger = document.getElementById('inputHexStagger') as HTMLInputE
 const valHexStagger = document.getElementById('valHexStagger') as HTMLElement;
 const inputHexRotation = document.getElementById('inputHexRotation') as HTMLInputElement;
 
+const lineWipeSpecificControls = document.getElementById('lineWipeSpecificControls') as HTMLElement;
+const inputLineWidth = document.getElementById('inputLineWidth') as HTMLInputElement;
+const valLineWidth = document.getElementById('valLineWidth') as HTMLElement;
+const inputLineAngle = document.getElementById('inputLineAngle') as HTMLInputElement;
+const valLineAngle = document.getElementById('valLineAngle') as HTMLElement;
+const inputLineSpeedLines = document.getElementById('inputLineSpeedLines') as HTMLInputElement;
+
 const selectFormat = document.getElementById('selectFormat') as HTMLSelectElement;
 const selectResolution = document.getElementById('selectResolution') as HTMLSelectElement;
 const selectFps = document.getElementById('selectFps') as HTMLSelectElement;
@@ -123,6 +130,7 @@ function renderPresetCards() {
   }
   presetDescription.textContent = currentPreset.description;
   hexSpecificControls.style.display = currentPresetId === 'hex' ? 'flex' : 'none';
+  lineWipeSpecificControls.style.display = currentPresetId === 'line-wipe' ? 'flex' : 'none';
 }
 
 function selectPreset(presetId: string) {
@@ -155,6 +163,12 @@ function syncOptionsToUI() {
     inputHexStagger.value = String(currentOptions.staggerDelay ?? 0.65);
     valHexStagger.textContent = String(inputHexStagger.value);
     inputHexRotation.checked = !!currentOptions.rotationEffect;
+  } else if (currentPresetId === 'line-wipe') {
+    inputLineWidth.value = String(currentOptions.bandWidth ?? 180);
+    valLineWidth.textContent = `${inputLineWidth.value}px`;
+    inputLineAngle.value = String(currentOptions.angleDeg ?? 28);
+    valLineAngle.textContent = `${inputLineAngle.value}°`;
+    inputLineSpeedLines.checked = currentOptions.speedLines !== false;
   }
 }
 
@@ -386,6 +400,26 @@ function setupEventListeners() {
 
   inputHexRotation.addEventListener('change', () => {
     currentOptions.rotationEffect = inputHexRotation.checked;
+    engine.updateOptions(currentOptions);
+  });
+
+  // LINE WIPE 特有設定
+  inputLineWidth.addEventListener('input', () => {
+    const val = parseInt(inputLineWidth.value, 10);
+    valLineWidth.textContent = `${val}px`;
+    currentOptions.bandWidth = val;
+    engine.updateOptions(currentOptions);
+  });
+
+  inputLineAngle.addEventListener('input', () => {
+    const val = parseInt(inputLineAngle.value, 10);
+    valLineAngle.textContent = `${val}°`;
+    currentOptions.angleDeg = val;
+    engine.updateOptions(currentOptions);
+  });
+
+  inputLineSpeedLines.addEventListener('change', () => {
+    currentOptions.speedLines = inputLineSpeedLines.checked;
     engine.updateOptions(currentOptions);
   });
 

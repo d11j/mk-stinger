@@ -116,6 +116,29 @@
                 </label>
               </div>
             </div>
+
+            <!-- LINE WIPE 特有設定 -->
+            <div id="lineWipeSpecificControls" style="display: none; flex-direction: column; gap: 10px; margin-top: 8px;">
+              <div class="control-row">
+                <span class="control-label">斜線の幅 (太さ)</span>
+                <span class="control-value" id="valLineWidth">180px</span>
+              </div>
+              <input type="range" id="inputLineWidth" class="input-range" min="60" max="360" step="10" value="180" />
+
+              <div class="control-row">
+                <span class="control-label">傾き角度</span>
+                <span class="control-value" id="valLineAngle">28°</span>
+              </div>
+              <input type="range" id="inputLineAngle" class="input-range" min="10" max="45" step="1" value="28" />
+
+              <div class="control-row">
+                <span class="control-label">スピードダッシュ効果</span>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="checkbox" id="inputLineSpeedLines" checked />
+                  <span style="font-size: 0.8rem; color: var(--text-secondary);">有効</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
       </aside>
