@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mk-stinger | OBS スティンガートランジション生成ツール</title>
+    <meta
+      name="description"
+      content="OBS向けスティンガートランジション動画（トラックマットMP4/WebM）をブラウザ完結で高速生成する決定論的ジェネレーター"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"></polygon>
+            <line x1="12" y1="22" x2="12" y2="15.5"></line>
+            <polyline points="22 8.5 12 15.5 2 8.5"></polyline>
+          </svg>
+        </div>
+        <div>
+          <span class="brand-title">mk-stinger</span>
+          <span class="brand-tag">OBS Stinger Studio</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span style="font-size: 0.8rem; color: var(--text-secondary);">
+          ブラウザ完結・WebCodecs & トラックマット出力
+        </span>
+      </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="app-main">
+      <!-- 左パネル: アニメーション設定 -->
+      <aside class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            アニメーション設定
+          </h2>
+        </div>
+        <div class="panel-content">
+          <!-- プリセット選択 -->
+          <div class="section-group">
+            <span class="section-label">プリセット選択</span>
+            <div class="preset-grid" id="presetList">
+              <!-- JSで動的生成 -->
+            </div>
+          </div>
+
+          <div id="presetDescription" style="font-size: 0.78rem; color: var(--text-secondary); background: var(--bg-card); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); line-height: 1.4;">
+            プリセットの説明
+          </div>
+
+          <!-- カラーパレット設定 -->
+          <div class="section-group">
+            <span class="section-label">カラーパレット</span>
+            <div class="color-picker-grid">
+              <div class="color-input-wrapper">
+                <span>メイン色</span>
+                <input type="color" id="primaryColorInput" class="color-dot-input" value="#6366f1" />
+              </div>
+              <div class="color-input-wrapper">
+                <span>サブ色</span>
+                <input type="color" id="secondaryColorInput" class="color-dot-input" value="#06b6d4" />
+              </div>
+              <div class="color-input-wrapper">
+                <span>アクセント</span>
+                <input type="color" id="accentColorInput" class="color-dot-input" value="#ec4899" />
+              </div>
+              <div class="color-input-wrapper">
+                <span>ボーダー/発光</span>
+                <input type="color" id="borderColorInput" class="color-dot-input" value="#38bdf8" />
+              </div>
+            </div>
+          </div>
+
+          <!-- スタイル詳細パラメータ -->
+          <div class="section-group">
+            <span class="section-label">ディテール調整</span>
+
+            <div class="control-row">
+              <span class="control-label">ボーダー幅</span>
+              <span class="control-value" id="valBorderWidth">3px</span>
+            </div>
+            <input type="range" id="inputBorderWidth" class="input-range" min="0" max="10" step="1" value="3" />
+
+            <div class="control-row" style="margin-top: 8px;">
+              <span class="control-label">ネオングロー効果</span>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="inputHasGlow" checked />
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">有効</span>
+              </label>
+            </div>
+
+            <!-- HEX特有設定 -->
+            <div id="hexSpecificControls" style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+              <div class="control-row">
+                <span class="control-label">展開ディレイ (波の幅)</span>
+                <span class="control-value" id="valHexStagger">0.65</span>
+              </div>
+              <input type="range" id="inputHexStagger" class="input-range" min="0.2" max="0.9" step="0.05" value="0.65" />
+
+              <div class="control-row">
+                <span class="control-label">回転エフェクト</span>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="checkbox" id="inputHexRotation" checked />
+                  <span style="font-size: 0.8rem; color: var(--text-secondary);">有効</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- 中央: プレビュー & タイムライン -->
+      <section class="preview-center">
+        <!-- 上部ツールバー -->
+        <div class="preview-toolbar">
+          <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+            <span>プレビュー表示</span>
+            <span id="canvasResBadge" class="frame-badge">1920×1080</span>
+          </div>
+
+          <!-- 背景モード切り替え -->
+          <div class="bg-mode-selector">
+            <button class="bg-btn active" data-bg="checkerboard">透過市松</button>
+            <button class="bg-btn" data-bg="black">黒背景</button>
+            <button class="bg-btn" data-bg="green">グリーン</button>
+            <button class="bg-btn" data-bg="scene_sim" title="シーンAからシーンBへの遷移をシミュレート">配信切替テスト</button>
+          </div>
+        </div>
+
+        <!-- キャンバスビューポート -->
+        <div class="canvas-viewport">
+          <div class="canvas-container">
+            <canvas id="previewCanvas" width="1920" height="1080"></canvas>
+          </div>
+        </div>
+
+        <!-- タイムライン & 再生コントローラー -->
+        <div class="timeline-bar">
+          <!-- シークバー & 不透明度波形 -->
+          <div class="scrubber-container" id="scrubberTrack" title="クリックまたはドラッグしてフレームをシーク">
+            <canvas id="coverageCanvas"></canvas>
+            <div class="scrubber-progress" id="scrubberProgress"></div>
+            <div class="cutpoint-marker" id="cutpointMarker" style="left: 50%;"></div>
+          </div>
+
+          <!-- 再生コントロール -->
+          <div class="timeline-controls">
+            <div class="playback-buttons">
+              <!-- 先頭へ -->
+              <button class="btn-icon" id="btnToStart" title="先頭フレームへ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path>
+                </svg>
+              </button>
+              <!-- 1フレーム戻る -->
+              <button class="btn-icon" id="btnStepPrev" title="1フレーム戻る">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"></path>
+                </svg>
+              </button>
+              <!-- 再生 / 一時停止 -->
+              <button class="btn-icon play-btn" id="btnTogglePlay" title="再生/一時停止 (Space)">
+                <svg id="iconPlay" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z"></path>
+                </svg>
+                <svg id="iconPause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                  <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>
+                </svg>
+              </button>
+              <!-- 1フレーム進む -->
+              <button class="btn-icon" id="btnStepNext" title="1フレーム進む">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"></path>
+                </svg>
+              </button>
+              <!-- 末尾へ -->
+              <button class="btn-icon" id="btnToEnd" title="末尾フレームへ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- 時間 & フレーム情報 -->
+            <div class="time-counter">
+              <span class="current-time" id="lblCurrentTime">00:00.000</span>
+              <span class="total-time">/ <span id="lblTotalTime">02.000s</span></span>
+              <span class="frame-badge" id="lblFrameBadge">F: 0 / 120</span>
+              <span class="frame-badge" style="color: var(--accent-amber);" id="lblCutBadge">CUT: 60f (1000ms)</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右パネル: 出力設定 & OBS設定値 -->
+      <aside class="panel panel-right">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            出力設定 & OBS設定値
+          </h2>
+        </div>
+        <div class="panel-content">
+          <!-- 出力フォーマット -->
+          <div class="section-group">
+            <div class="control-row">
+              <span class="section-label">出力モード</span>
+              <span style="font-size: 0.72rem; color: var(--accent-cyan); font-weight: 600;">アルファ透過対応</span>
+            </div>
+            <select id="selectFormat" class="input-select">
+              <option value="trackmatte-webm" selected>
+                トラックマット WebM (VP9 / 3840×1080)
+              </option>
+            </select>
+            <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
+              OBSで左側アニメーション映像の背景透過（アルファチャンネル）を正しく合成するため、WebM (VP9 with Alpha) 形式で固定出力されます。
+            </div>
+          </div>
+
+          <!-- 解像度 & FPS -->
+          <div class="section-group">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <span class="section-label">解像度</span>
+                <select id="selectResolution" class="input-select">
+                  <option value="1080p" selected>1080p (FHD)</option>
+                  <option value="720p">720p (HD)</option>
+                </select>
+              </div>
+              <div>
+                <span class="section-label">フレームレート</span>
+                <select id="selectFps" class="input-select">
+                  <option value="60" selected>60 fps</option>
+                  <option value="30">30 fps</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- アニメーション時間 & ビットレート -->
+          <div class="section-group">
+            <div class="control-row">
+              <span class="control-label">アニメーション時間</span>
+              <span class="control-value" id="valDuration">2.0 秒</span>
+            </div>
+            <input type="range" id="inputDuration" class="input-range" min="1.0" max="4.0" step="0.1" value="2.0" />
+
+            <div class="control-row" style="margin-top: 8px;">
+              <span class="control-label">ビットレート</span>
+              <span class="control-value" id="valBitrate">16 Mbps</span>
+            </div>
+            <input type="range" id="inputBitrate" class="input-range" min="8" max="28" step="2" value="16" />
+          </div>
+
+          <!-- OBS設定値カード (SPEC.md 5.3) -->
+          <div class="obs-info-card">
+            <div class="obs-card-header">
+              <div class="obs-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                OBS Studio 設定パラメータ
+              </div>
+            </div>
+
+            <table class="obs-table">
+              <tr>
+                <td>トランジション種別</td>
+                <td>スティンガー</td>
+              </tr>
+              <tr>
+                <td>映像ファイル名</td>
+                <td id="obsFilename" style="color: var(--accent-cyan); font-size: 0.72rem; word-break: break-all;">stinger_hex_1080p_60fps_60f.webm</td>
+              </tr>
+              <tr>
+                <td>移行ポイント (時間)</td>
+                <td id="obsCutMs" style="color: #fbbf24;">1000 ms</td>
+              </tr>
+              <tr>
+                <td>移行ポイント (フレーム)</td>
+                <td id="obsCutFrame" style="color: #fbbf24;">60 frame</td>
+              </tr>
+              <tr id="obsTrackMatteRow">
+                <td>トラックマットを使用</td>
+                <td style="color: #10b981;">有効 (チェック)</td>
+              </tr>
+              <tr id="obsLayoutRow">
+                <td>マットレイアウト</td>
+                <td>横並び (左:透過映像, 右:マスク)</td>
+              </tr>
+            </table>
+
+            <button class="btn-copy" id="btnCopyObsConfig">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              OBS設定メモをコピー
+            </button>
+          </div>
+
+          <!-- 手動カットポイント微調整スライダー -->
+          <div class="section-group">
+            <div class="control-row">
+              <span class="control-label">移行ポイント手動微調整</span>
+              <span class="control-value" id="valManualCut">自動算出</span>
+            </div>
+            <input type="range" id="inputManualCut" class="input-range" min="0" max="120" value="60" />
+            <button id="btnResetCutPoint" class="btn-secondary" style="font-size: 0.72rem; padding: 4px 8px; margin-top: 4px; align-self: flex-end;">
+              自動算出値にリセット
+            </button>
+          </div>
+
+          <!-- エクスポート開始ボタン -->
+          <button class="btn-primary" id="btnStartExport">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            スティンガー動画を書き出し (.webm)
+          </button>
+
+          <!-- OBSインポート設定ガイド (アコーディオン) -->
+          <div class="guide-accordion">
+            <div class="accordion-summary" id="guideToggle">
+              <span>📖 OBS Studio でのインポート手順</span>
+              <svg id="guideArrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div class="accordion-content" id="guideContent" style="display: none;">
+              <ol>
+                <li>OBSの「シーン遷移」ドックの「＋」から<strong>「スティンガー」</strong>を追加。</li>
+                <li><strong>映像ファイル</strong>に書き出した動画（.webm）を選択。</li>
+                <li><strong>移行ポイント種別</strong>で「時間 (ミリ秒)」を選択し、上記設定値（例: <code>1000 ms</code>）を入力。</li>
+                <li><strong>「トラックマットを使用する」</strong>にチェックを入れ、マットレイアウトで<strong>「横並び（同じファイル、並べて表示）」</strong>を選択。</li>
+                <li>「プレビュー」ボタンを押して、透過アニメーションとシーン切り替えが綺麗に行われることを確認！</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- エクスポート進捗 & 完了モーダル -->
+    <div class="modal-backdrop" id="exportModal">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            動画エクスポート
+          </h3>
+        </div>
+        <div class="modal-body">
+          <div class="progress-container">
+            <div class="progress-stats">
+              <span id="exportStatusText">レンダリング準備中...</span>
+              <span id="exportPercentText" style="font-weight: 700; color: var(--accent-cyan); font-family: var(--font-mono);">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="exportProgressBar"></div>
+            </div>
+          </div>
+
+          <div id="exportDetailsBox" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+            WebCodecs API により、フレーム落ちのない決定論的レンダリングと高速ハードウェアエンコードを実行しています。
+          </div>
+
+          <!-- エクスポート完了時に表示されるプレビューと情報 -->
+          <div id="exportResultArea" style="display: none; flex-direction: column; gap: 12px;">
+            <div style="background-color: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; border-radius: var(--radius-sm); padding: 12px; color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              スティンガー動画の生成が完了しました！
+            </div>
+            <video id="exportVideoPreview" controls loop style="width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border-color); max-height: 200px; background: #000;"></video>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+              <span id="exportResultFileInfo">サイズ: 0MB</span>
+              <span id="exportResultCutInfo">移行ポイント: 1000ms</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="btnCancelExport">キャンセル</button>
+          <a class="btn-primary" id="btnDownloadExport" style="display: none; text-decoration: none; padding: 8px 16px; font-size: 0.85rem;" download>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            動画をダウンロード
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div class="toast" id="toastMessage">設定をコピーしました</div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
