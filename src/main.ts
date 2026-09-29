@@ -60,13 +60,13 @@ const customImageDim = document.getElementById('customImageDim') as HTMLElement;
 const btnClearCustomImage = document.getElementById('btnClearCustomImage') as HTMLButtonElement;
 const inputSpriteSize = document.getElementById('inputSpriteSize') as HTMLInputElement;
 const valSpriteSize = document.getElementById('valSpriteSize') as HTMLElement;
+const inputSpriteSizeScatter = document.getElementById('inputSpriteSizeScatter') as HTMLInputElement;
+const valSpriteSizeScatter = document.getElementById('valSpriteSizeScatter') as HTMLElement;
 const inputSpriteCount = document.getElementById('inputSpriteCount') as HTMLInputElement;
 const valSpriteCount = document.getElementById('valSpriteCount') as HTMLElement;
 const inputSpriteScatter = document.getElementById('inputSpriteScatter') as HTMLInputElement;
 const valSpriteScatter = document.getElementById('valSpriteScatter') as HTMLElement;
 const inputSpriteRotate = document.getElementById('inputSpriteRotate') as HTMLInputElement;
-const inputSpriteLineWidth = document.getElementById('inputSpriteLineWidth') as HTMLInputElement;
-const valSpriteLineWidth = document.getElementById('valSpriteLineWidth') as HTMLElement;
 const inputSpriteLineAngle = document.getElementById('inputSpriteLineAngle') as HTMLInputElement;
 const valSpriteLineAngle = document.getElementById('valSpriteLineAngle') as HTMLElement;
 
@@ -195,15 +195,16 @@ function syncOptionsToUI() {
   } else if (currentPresetId === 'sprite-wipe') {
     selectSpriteType.value = currentOptions.spriteType ?? 'star';
     customImageContainer.style.display = currentOptions.spriteType === 'custom' ? 'flex' : 'none';
-    inputSpriteSize.value = String(currentOptions.spriteSize ?? 42);
+    inputSpriteSize.value = String(currentOptions.spriteSize ?? 96);
     valSpriteSize.textContent = `${inputSpriteSize.value}px`;
+    const sizeScatterVal = currentOptions.sizeScatter ?? 0.4;
+    inputSpriteSizeScatter.value = String(sizeScatterVal);
+    valSpriteSizeScatter.textContent = `${Math.round(sizeScatterVal * 100)}%`;
     inputSpriteCount.value = String(currentOptions.spriteCount ?? 16);
     valSpriteCount.textContent = `${inputSpriteCount.value}個`;
     inputSpriteScatter.value = String(currentOptions.spriteScatter ?? 36);
     valSpriteScatter.textContent = `${inputSpriteScatter.value}px`;
     inputSpriteRotate.checked = currentOptions.spriteRotate !== false;
-    inputSpriteLineWidth.value = String(currentOptions.lineWidth ?? 48);
-    valSpriteLineWidth.textContent = `${inputSpriteLineWidth.value}px`;
     inputSpriteLineAngle.value = String(currentOptions.angleDeg ?? 26);
     valSpriteLineAngle.textContent = `${inputSpriteLineAngle.value}°`;
 
@@ -533,6 +534,16 @@ function setupEventListeners() {
     engine.flushPendingAnalysis();
   });
 
+  inputSpriteSizeScatter.addEventListener('input', () => {
+    const val = parseFloat(inputSpriteSizeScatter.value);
+    valSpriteSizeScatter.textContent = `${Math.round(val * 100)}%`;
+    currentOptions.sizeScatter = val;
+    engine.updateOptions(currentOptions);
+  });
+  inputSpriteSizeScatter.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
+
   inputSpriteCount.addEventListener('input', () => {
     const val = parseInt(inputSpriteCount.value, 10);
     valSpriteCount.textContent = `${val}個`;
@@ -556,16 +567,6 @@ function setupEventListeners() {
   inputSpriteRotate.addEventListener('change', () => {
     currentOptions.spriteRotate = inputSpriteRotate.checked;
     engine.updateOptions(currentOptions, true);
-  });
-
-  inputSpriteLineWidth.addEventListener('input', () => {
-    const val = parseInt(inputSpriteLineWidth.value, 10);
-    valSpriteLineWidth.textContent = `${val}px`;
-    currentOptions.lineWidth = val;
-    engine.updateOptions(currentOptions);
-  });
-  inputSpriteLineWidth.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
   });
 
   inputSpriteLineAngle.addEventListener('input', () => {

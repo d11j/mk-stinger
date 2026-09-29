@@ -1,31 +1,34 @@
 import { BasePresetOptions, PresetPlugin, SpriteType } from '../../types';
 
 export interface SpriteWipePresetOptions extends BasePresetOptions {
-  lineWidth: number; // メインラインの幅 (px)
   angleDeg: number; // 傾き角度 (度)
   spriteType: SpriteType; // スプライトの種類
   spriteCount: number; // スプライトの配置数
   spriteSize: number; // スプライトの大きさ (px)
+  sizeScatter: number; // スプライトサイズの散布幅 (0.0 〜 1.0)
   spriteScatter: number; // ラインからの散布幅 (px)
   spriteRotate: boolean; // 自転アニメーション
   customImage: HTMLImageElement | null; // アップロードされたカスタム画像（永続化なし）
 }
+
+// 内部定数: スプライトを引き立たせるためのスリムなセンターライン幅
+const FIXED_LINE_WIDTH = 4;
 
 export const defaultSpriteWipeOptions: SpriteWipePresetOptions = {
   primaryColor: '#ec4899', // ビビッドピンク
   secondaryColor: '#8b5cf6', // バイオレット
   accentColor: '#fde047', // ゴールドスター
   borderColor: '#ffffff', // シャープホワイトエッジ
-  borderWidth: 3,
+  borderWidth: 2,
   hasGlow: true,
   glowColor: '#ec4899',
-  glowBlur: 20,
+  glowBlur: 16,
   patternScale: 1.0,
-  lineWidth: 48,
   angleDeg: 26,
   spriteType: 'star',
   spriteCount: 16,
-  spriteSize: 42,
+  spriteSize: 96,
+  sizeScatter: 0.4,
   spriteScatter: 36,
   spriteRotate: true,
   customImage: null,
@@ -121,7 +124,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
     const tan = Math.tan(rad);
     const skewOffset = height * tan;
 
-    const baseLineW = options.lineWidth * (options.patternScale || 1.0);
+    const baseLineW = FIXED_LINE_WIDTH * (options.patternScale || 1.0);
     const extraMargin = 400; // 画面外から画面外への移動余白
 
     // 移動範囲（画面外左から画面外右まで完全に抜け切るスパン）
@@ -148,7 +151,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
     // 発光グロー効果
     if (options.hasGlow) {
       ctx.shadowColor = options.glowColor || options.primaryColor;
-      ctx.shadowBlur = options.glowBlur || 20;
+      ctx.shadowBlur = options.glowBlur || 16;
     }
 
     // メインラインのグラデーション塗り（セカンダリ → プライマリ → アクセント）
@@ -184,8 +187,9 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
 
     // 2. デコレーションスプライトの描画
     const count = Math.max(1, options.spriteCount || 16);
-    const baseSize = options.spriteSize || 42;
+    const baseSize = options.spriteSize || 96;
     const scatter = options.spriteScatter ?? 36;
+    const sizeScatterRate = Math.max(0, Math.min(1, options.sizeScatter ?? 0.4));
     const hasCustomImg =
       options.spriteType === 'custom' &&
       options.customImage &&
@@ -210,9 +214,9 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
       const scatterOffset = (rnd2 - 0.5) * 2 * scatter;
       const spriteX = lineXAtY + scatterOffset;
 
-      // 個別スプライトのサイズ（基本サイズに ±25% のバリエーション）
-      const sizeScale = 0.75 + rnd3 * 0.5;
-      const currentSize = baseSize * sizeScale;
+      // 個別スプライトのサイズ（基本サイズから散布幅倍率に応じて縮小変化）
+      const sizeScale = 1.0 - sizeScatterRate * rnd3;
+      const currentSize = Math.max(8, baseSize * sizeScale);
 
       // 自転・回転角
       let angle = 0;
