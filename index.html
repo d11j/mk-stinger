@@ -139,6 +139,95 @@
                 </label>
               </div>
             </div>
+
+            <!-- DECORATED LINE (スプライトライン) 特有設定 -->
+            <div id="spriteWipeSpecificControls" style="display: none; flex-direction: column; gap: 10px; margin-top: 8px;">
+              <div>
+                <span class="control-label" style="display: block; margin-bottom: 4px;">スプライト装飾</span>
+                <select id="selectSpriteType" class="input-select">
+                  <option value="star" selected>★ スター (星)</option>
+                  <option value="heart">♥ ハート</option>
+                  <option value="sparkle">✨ スパークル (キラキラ)</option>
+                  <option value="diamond">◆ ダイヤモンド</option>
+                  <option value="circle">● バブル (円)</option>
+                  <option value="custom">📁 任意のカスタム画像 (PNG / SVG)</option>
+                </select>
+              </div>
+
+              <!-- カスタム画像アップロードエリア -->
+              <div id="customImageContainer" class="custom-upload-box" style="display: none; flex-direction: column; gap: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.76rem; font-weight: 600; color: var(--text-secondary);">カスタム画像ファイル</span>
+                  <button type="button" id="btnUploadImageTrigger" class="btn-secondary" style="font-size: 0.72rem; padding: 3px 8px;">画像を選択</button>
+                  <input type="file" id="inputSpriteCustomImage" accept="image/png,image/svg+xml,image/webp,image/jpeg" style="display: none;" />
+                </div>
+
+                <!-- 選択中画像のプレビューエリア -->
+                <div id="customImagePreviewWrapper" style="display: none; align-items: center; gap: 8px; margin-top: 4px;">
+                  <div class="custom-image-thumb-box">
+                    <img id="customImageThumb" src="" alt="preview" />
+                  </div>
+                  <div style="flex: 1; min-width: 0;">
+                    <div id="customImageName" style="font-size: 0.74rem; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">image.png</div>
+                    <div id="customImageDim" style="font-size: 0.68rem; color: var(--text-muted);">128×128</div>
+                  </div>
+                  <button type="button" id="btnClearCustomImage" class="btn-icon" title="画像を解除" style="width: 24px; height: 24px; padding: 0;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+
+                <div style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.3;">
+                  ※ 透過PNG / SVG 推奨。画像はメモリ上でのみ保持され、永続化・外部送信はされません。
+                </div>
+              </div>
+
+              <!-- スプライトサイズ -->
+              <div class="control-row">
+                <span class="control-label">スプライトサイズ</span>
+                <span class="control-value" id="valSpriteSize">42px</span>
+              </div>
+              <input type="range" id="inputSpriteSize" class="input-range" min="16" max="96" step="2" value="42" />
+
+              <!-- スプライト個数 -->
+              <div class="control-row">
+                <span class="control-label">スプライト配置個数</span>
+                <span class="control-value" id="valSpriteCount">16個</span>
+              </div>
+              <input type="range" id="inputSpriteCount" class="input-range" min="4" max="36" step="1" value="16" />
+
+              <!-- 散布幅 -->
+              <div class="control-row">
+                <span class="control-label">ラインからの散布幅</span>
+                <span class="control-value" id="valSpriteScatter">36px</span>
+              </div>
+              <input type="range" id="inputSpriteScatter" class="input-range" min="0" max="100" step="2" value="36" />
+
+              <!-- スプライト自転 -->
+              <div class="control-row">
+                <span class="control-label">回転エフェクト</span>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="checkbox" id="inputSpriteRotate" checked />
+                  <span style="font-size: 0.8rem; color: var(--text-secondary);">有効</span>
+                </label>
+              </div>
+
+              <!-- ライン幅 -->
+              <div class="control-row">
+                <span class="control-label">ラインの太さ</span>
+                <span class="control-value" id="valSpriteLineWidth">48px</span>
+              </div>
+              <input type="range" id="inputSpriteLineWidth" class="input-range" min="12" max="160" step="4" value="48" />
+
+              <!-- 傾き角度 -->
+              <div class="control-row">
+                <span class="control-label">傾き角度</span>
+                <span class="control-value" id="valSpriteLineAngle">26°</span>
+              </div>
+              <input type="range" id="inputSpriteLineAngle" class="input-range" min="10" max="45" step="1" value="26" />
+            </div>
           </div>
         </div>
       </aside>

@@ -49,6 +49,19 @@ export interface HexPresetOptions extends BasePresetOptions {
   rotationEffect: boolean;
 }
 
+export type SpriteType = 'star' | 'heart' | 'sparkle' | 'diamond' | 'circle' | 'custom';
+
+export interface SpriteWipePresetOptions extends BasePresetOptions {
+  lineWidth: number; // メインラインの幅 (px)
+  angleDeg: number; // 傾き角度 (度)
+  spriteType: SpriteType; // スプライトの形状
+  spriteCount: number; // スプライトの個数
+  spriteSize: number; // スプライトの基本サイズ (px)
+  spriteScatter: number; // ラインからの散布幅 (px)
+  spriteRotate: boolean; // 自転エフェクト
+  customImage: HTMLImageElement | null; // アップロード画像（永続化なし）
+}
+
 export interface PresetPlugin<T = any> {
   id: string;
   name: string;

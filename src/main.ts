@@ -48,6 +48,28 @@ const inputLineAngle = document.getElementById('inputLineAngle') as HTMLInputEle
 const valLineAngle = document.getElementById('valLineAngle') as HTMLElement;
 const inputLineSpeedLines = document.getElementById('inputLineSpeedLines') as HTMLInputElement;
 
+const spriteWipeSpecificControls = document.getElementById('spriteWipeSpecificControls') as HTMLElement;
+const selectSpriteType = document.getElementById('selectSpriteType') as HTMLSelectElement;
+const customImageContainer = document.getElementById('customImageContainer') as HTMLElement;
+const btnUploadImageTrigger = document.getElementById('btnUploadImageTrigger') as HTMLButtonElement;
+const inputSpriteCustomImage = document.getElementById('inputSpriteCustomImage') as HTMLInputElement;
+const customImagePreviewWrapper = document.getElementById('customImagePreviewWrapper') as HTMLElement;
+const customImageThumb = document.getElementById('customImageThumb') as HTMLImageElement;
+const customImageName = document.getElementById('customImageName') as HTMLElement;
+const customImageDim = document.getElementById('customImageDim') as HTMLElement;
+const btnClearCustomImage = document.getElementById('btnClearCustomImage') as HTMLButtonElement;
+const inputSpriteSize = document.getElementById('inputSpriteSize') as HTMLInputElement;
+const valSpriteSize = document.getElementById('valSpriteSize') as HTMLElement;
+const inputSpriteCount = document.getElementById('inputSpriteCount') as HTMLInputElement;
+const valSpriteCount = document.getElementById('valSpriteCount') as HTMLElement;
+const inputSpriteScatter = document.getElementById('inputSpriteScatter') as HTMLInputElement;
+const valSpriteScatter = document.getElementById('valSpriteScatter') as HTMLElement;
+const inputSpriteRotate = document.getElementById('inputSpriteRotate') as HTMLInputElement;
+const inputSpriteLineWidth = document.getElementById('inputSpriteLineWidth') as HTMLInputElement;
+const valSpriteLineWidth = document.getElementById('valSpriteLineWidth') as HTMLElement;
+const inputSpriteLineAngle = document.getElementById('inputSpriteLineAngle') as HTMLInputElement;
+const valSpriteLineAngle = document.getElementById('valSpriteLineAngle') as HTMLElement;
+
 const selectFormat = document.getElementById('selectFormat') as HTMLSelectElement;
 const selectResolution = document.getElementById('selectResolution') as HTMLSelectElement;
 const selectFps = document.getElementById('selectFps') as HTMLSelectElement;
@@ -131,6 +153,7 @@ function renderPresetCards() {
   presetDescription.textContent = currentPreset.description;
   hexSpecificControls.style.display = currentPresetId === 'hex' ? 'flex' : 'none';
   lineWipeSpecificControls.style.display = currentPresetId === 'line-wipe' ? 'flex' : 'none';
+  spriteWipeSpecificControls.style.display = currentPresetId === 'sprite-wipe' ? 'flex' : 'none';
 }
 
 function selectPreset(presetId: string) {
@@ -169,6 +192,27 @@ function syncOptionsToUI() {
     inputLineAngle.value = String(currentOptions.angleDeg ?? 28);
     valLineAngle.textContent = `${inputLineAngle.value}°`;
     inputLineSpeedLines.checked = currentOptions.speedLines !== false;
+  } else if (currentPresetId === 'sprite-wipe') {
+    selectSpriteType.value = currentOptions.spriteType ?? 'star';
+    customImageContainer.style.display = currentOptions.spriteType === 'custom' ? 'flex' : 'none';
+    inputSpriteSize.value = String(currentOptions.spriteSize ?? 42);
+    valSpriteSize.textContent = `${inputSpriteSize.value}px`;
+    inputSpriteCount.value = String(currentOptions.spriteCount ?? 16);
+    valSpriteCount.textContent = `${inputSpriteCount.value}個`;
+    inputSpriteScatter.value = String(currentOptions.spriteScatter ?? 36);
+    valSpriteScatter.textContent = `${inputSpriteScatter.value}px`;
+    inputSpriteRotate.checked = currentOptions.spriteRotate !== false;
+    inputSpriteLineWidth.value = String(currentOptions.lineWidth ?? 48);
+    valSpriteLineWidth.textContent = `${inputSpriteLineWidth.value}px`;
+    inputSpriteLineAngle.value = String(currentOptions.angleDeg ?? 26);
+    valSpriteLineAngle.textContent = `${inputSpriteLineAngle.value}°`;
+
+    if (currentOptions.customImage) {
+      customImagePreviewWrapper.style.display = 'flex';
+      customImageThumb.src = currentOptions.customImage.src;
+    } else {
+      customImagePreviewWrapper.style.display = 'none';
+    }
   }
 }
 
@@ -433,6 +477,105 @@ function setupEventListeners() {
   inputLineSpeedLines.addEventListener('change', () => {
     currentOptions.speedLines = inputLineSpeedLines.checked;
     engine.updateOptions(currentOptions, true);
+  });
+
+  // SPRITE WIPE (DECORATED LINE) 特有設定
+  selectSpriteType.addEventListener('change', () => {
+    currentOptions.spriteType = selectSpriteType.value;
+    customImageContainer.style.display = currentOptions.spriteType === 'custom' ? 'flex' : 'none';
+    engine.updateOptions(currentOptions, true);
+  });
+
+  btnUploadImageTrigger.addEventListener('click', () => {
+    inputSpriteCustomImage.click();
+  });
+
+  inputSpriteCustomImage.addEventListener('change', (e) => {
+    const files = (e.target as HTMLInputElement).files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        currentOptions.customImage = img;
+        currentOptions.spriteType = 'custom';
+        selectSpriteType.value = 'custom';
+        customImageContainer.style.display = 'flex';
+        customImagePreviewWrapper.style.display = 'flex';
+        customImageThumb.src = img.src;
+        customImageName.textContent = file.name;
+        customImageDim.textContent = `${img.naturalWidth}×${img.naturalHeight}`;
+        engine.updateOptions(currentOptions, true);
+        showToast(`画像「${file.name}」を読み込みました`);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  btnClearCustomImage.addEventListener('click', () => {
+    currentOptions.customImage = null;
+    inputSpriteCustomImage.value = '';
+    customImagePreviewWrapper.style.display = 'none';
+    engine.updateOptions(currentOptions, true);
+    showToast('カスタム画像を解除しました');
+  });
+
+  inputSpriteSize.addEventListener('input', () => {
+    const val = parseInt(inputSpriteSize.value, 10);
+    valSpriteSize.textContent = `${val}px`;
+    currentOptions.spriteSize = val;
+    engine.updateOptions(currentOptions);
+  });
+  inputSpriteSize.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
+
+  inputSpriteCount.addEventListener('input', () => {
+    const val = parseInt(inputSpriteCount.value, 10);
+    valSpriteCount.textContent = `${val}個`;
+    currentOptions.spriteCount = val;
+    engine.updateOptions(currentOptions);
+  });
+  inputSpriteCount.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
+
+  inputSpriteScatter.addEventListener('input', () => {
+    const val = parseInt(inputSpriteScatter.value, 10);
+    valSpriteScatter.textContent = `${val}px`;
+    currentOptions.spriteScatter = val;
+    engine.updateOptions(currentOptions);
+  });
+  inputSpriteScatter.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
+
+  inputSpriteRotate.addEventListener('change', () => {
+    currentOptions.spriteRotate = inputSpriteRotate.checked;
+    engine.updateOptions(currentOptions, true);
+  });
+
+  inputSpriteLineWidth.addEventListener('input', () => {
+    const val = parseInt(inputSpriteLineWidth.value, 10);
+    valSpriteLineWidth.textContent = `${val}px`;
+    currentOptions.lineWidth = val;
+    engine.updateOptions(currentOptions);
+  });
+  inputSpriteLineWidth.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
+  });
+
+  inputSpriteLineAngle.addEventListener('input', () => {
+    const val = parseInt(inputSpriteLineAngle.value, 10);
+    valSpriteLineAngle.textContent = `${val}°`;
+    currentOptions.angleDeg = val;
+    engine.updateOptions(currentOptions);
+  });
+  inputSpriteLineAngle.addEventListener('change', () => {
+    engine.flushPendingAnalysis();
   });
 
   // 出力設定: 解像度 / FPS / デュレーション
