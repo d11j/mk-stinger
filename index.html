@@ -6,7 +6,7 @@
     <title>mk-stinger | OBS スティンガートランジション生成ツール</title>
     <meta
       name="description"
-      content="OBS向けスティンガートランジション動画（トラックマットMP4/WebM）をブラウザ完結で高速生成する決定論的ジェネレーター"
+      content="インストール不要・ブラウザ完結でOBS向けスティンガートランジション動画（WebM）を簡単に作成・出力できるジェネレーター"
     />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
@@ -28,7 +28,7 @@
       </div>
       <div class="header-actions">
         <span style="font-size: 0.8rem; color: var(--text-secondary);">
-          ブラウザ完結・WebCodecs & トラックマット出力
+          インストール不要・ブラウザ完結スティンガージェネレーター
         </span>
       </div>
     </header>
@@ -103,7 +103,7 @@
             <!-- HEX特有設定 -->
             <div id="hexSpecificControls" style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
               <div class="control-row">
-                <span class="control-label">展開ディレイ (波の幅)</span>
+                <span class="control-label">広がるスピード (波の幅)</span>
                 <span class="control-value" id="valHexStagger">0.65</span>
               </div>
               <input type="range" id="inputHexStagger" class="input-range" min="0.2" max="0.9" step="0.05" value="0.65" />
@@ -207,14 +207,14 @@
 
               <!-- 散布幅 -->
               <div class="control-row">
-                <span class="control-label">ラインからの散布幅</span>
+                <span class="control-label">配置の散らばり</span>
                 <span class="control-value" id="valSpriteScatter">36px</span>
               </div>
               <input type="range" id="inputSpriteScatter" class="input-range" min="0" max="100" step="2" value="36" />
 
-              <!-- スプライト自転 -->
+              <!-- スプライト回転 -->
               <div class="control-row">
-                <span class="control-label">回転エフェクト</span>
+                <span class="control-label">回転アニメーション</span>
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
                   <input type="checkbox" id="inputSpriteRotate" checked />
                   <span style="font-size: 0.8rem; color: var(--text-secondary);">有効</span>
@@ -340,7 +340,7 @@
               </option>
             </select>
             <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
-              OBSで左側アニメーション映像の背景透過（アルファチャンネル）を正しく合成するため、WebM (VP9 with Alpha) 形式で固定出力されます。
+              背景透過（アルファ）対応のWebM形式で出力します。
             </div>
           </div>
 
@@ -462,9 +462,9 @@
               <ol>
                 <li>OBSの「シーン遷移」ドックの「＋」から<strong>「スティンガー」</strong>を追加。</li>
                 <li><strong>映像ファイル</strong>に書き出した動画（.webm）を選択。</li>
-                <li><strong>移行ポイント種別</strong>で「時間 (ミリ秒)」を選択し、上記設定値（例: <code>1000 ms</code>）を入力。</li>
+                <li><strong>移行ポイント種別</strong>で「フレーム」または「時間 (ミリ秒)」を選択し、上記設定値（例: <code>60 frame</code> または <code>1000 ms</code>）を入力。</li>
                 <li><strong>「トラックマットを使用する」</strong>にチェックを入れ、マットレイアウトで<strong>「横並び（同じファイル、並べて表示）」</strong>を選択。</li>
-                <li>「プレビュー」ボタンを押して、透過アニメーションとシーン切り替えが綺麗に行われることを確認！</li>
+                <li>「プレビュー」ボタンを押して、きれいに切り替わることを確認！</li>
               </ol>
             </div>
           </div>
@@ -495,7 +495,7 @@
           </div>
 
           <div id="exportDetailsBox" style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
-            WebCodecs API により、フレーム落ちのない決定論的レンダリングと高速ハードウェアエンコードを実行しています。
+            WebCodecs API により、ブラウザ上で直接高速エンコードを実行しています。
           </div>
 
           <!-- エクスポート完了時に表示されるプレビューと情報 -->
