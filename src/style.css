@@ -745,6 +745,7 @@ body {
   color: var(--text-primary);
   font-size: 0.85rem;
   font-weight: 600;
+  text-wrap: nowrap;
   padding: 8px 16px;
   border-radius: var(--radius-sm);
   cursor: pointer;
