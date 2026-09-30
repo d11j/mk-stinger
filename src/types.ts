@@ -11,7 +11,7 @@ export const RESOLUTIONS: Record<ResolutionPreset, Resolution> = {
   '720p': { width: 1280, height: 720, label: '720p (HD - 1280×720)' },
 };
 
-export type ExportFormat = 'trackmatte-mp4' | 'trackmatte-webm' | 'direct-webm';
+export type ExportFormat = 'trackmatte-webm' | 'direct-webm';
 
 export interface ExportConfig {
   resolutionKey: ResolutionPreset;

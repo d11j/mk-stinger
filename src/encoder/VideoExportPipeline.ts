@@ -1,4 +1,4 @@
-import { Output, WebMOutputFormat, Mp4OutputFormat, BufferTarget, CanvasSource } from 'mediabunny';
+import { Output, WebMOutputFormat, BufferTarget, CanvasSource } from 'mediabunny';
 import { ExportConfig, PresetPlugin } from '../types';
 import { TrackMatteRenderer } from '../renderer/TrackMatteRenderer';
 
@@ -30,9 +30,9 @@ export class VideoExportPipeline {
   }
 
   /**
-   * スティンガー動画を決定論的にレンダリング・エンコード
+   * スティンガー動画をフレームごとにレンダリング・エンコード
    * WebM (VP9) では mediabunny の並列エンコーダ技術により、
-   * Chromium の VideoEncoder 単体制限を突破して真の透過アルファチャンネルを保持して書き出します。
+   * Chromium の VideoEncoder 単体制限を回避して透過アルファチャンネルを保持して書き出します。
    */
   public async exportVideo(
     preset: PresetPlugin<any>,
@@ -56,7 +56,7 @@ export class VideoExportPipeline {
     const totalFrames = Math.max(2, Math.round(durationSec * fps));
     const bitrate = bitrateMbps * 1_000_000;
 
-    const isTrackMatte = format === 'trackmatte-mp4' || format === 'trackmatte-webm';
+    const isTrackMatte = format === 'trackmatte-webm';
     const outputWidth = isTrackMatte ? baseWidth * 2 : baseWidth;
     const outputHeight = baseHeight;
 
@@ -67,11 +67,8 @@ export class VideoExportPipeline {
       ? trackMatteRenderer.outputCanvas
       : trackMatteRenderer.getAnimCanvas();
 
-    const isWebm = format.endsWith('webm');
-    const isAlphaEnabled = isWebm; // WebM ではアルファ透過を保持
-
     const target = new BufferTarget();
-    const outputFormat = isWebm ? new WebMOutputFormat() : new Mp4OutputFormat();
+    const outputFormat = new WebMOutputFormat();
 
     const output = new Output({
       format: outputFormat,
@@ -79,9 +76,9 @@ export class VideoExportPipeline {
     });
 
     const videoSource = new CanvasSource(sourceCanvas, {
-      codec: isWebm ? 'vp9' : 'avc',
+      codec: 'vp9',
       bitrate,
-      alpha: isAlphaEnabled ? 'keep' : 'discard',
+      alpha: 'keep',
       keyFrameInterval: 2,
     });
 
@@ -167,8 +164,8 @@ export class VideoExportPipeline {
         throw new Error('エンコード結果のバッファが空です。');
       }
 
-      const mimeType = isWebm ? 'video/webm' : 'video/mp4';
-      const ext = isWebm ? 'webm' : 'mp4';
+      const mimeType = 'video/webm';
+      const ext = 'webm';
       const blob = new Blob([buffer], { type: mimeType });
       const downloadUrl = URL.createObjectURL(blob);
 

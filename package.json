@@ -1,7 +1,7 @@
 {
   "name": "mk-stinger",
   "version": "1.0.0",
-  "description": "OBS Stinger Transition Generator with Deterministic Canvas Rendering and WebCodecs/Muxer Export",
+  "description": "Browser-based OBS Stinger Transition Generator with WebCodecs and Track Matte WebM export",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,9 +11,7 @@
   "dependencies": {
     "canvas-confetti": "^1.9.4",
     "lucide": "^1.16.0",
-    "mediabunny": "^1.60.0",
-    "mp4-muxer": "^5.1.4",
-    "webm-muxer": "^5.0.3"
+    "mediabunny": "^1.60.0"
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",

@@ -269,8 +269,7 @@ function getOutputFilename(): string {
   const resKey = selectResolution.value as ResolutionPreset;
   const fps = selectFps.value;
   const cutFrame = engine.getEffectiveCutFrame();
-  const format = selectFormat.value;
-  const ext = format.endsWith('webm') ? 'webm' : 'mp4';
+  const ext = 'webm';
   return `stinger_${currentPresetId}_${resKey}_${fps}fps_${cutFrame}f.${ext}`;
 }
 
