@@ -501,6 +501,14 @@ export class AnimationEngine {
     }
 
     // ゲームUIモック
+    ctxA.font = '1000px sans-serif';
+    ctxA.textAlign = 'center';
+    ctxA.textBaseline = 'middle';
+    ctxA.fillStyle = '#aaaaaa';
+    ctxA.fillText('A', w / 2, h / 2);
+
+    ctxA.textAlign = 'left';
+    ctxA.textBaseline = 'bottom';
     ctxA.fillStyle = '#6366f1';
     ctxA.font = 'bold 36px sans-serif';
     ctxA.fillText('🎮 SCENE A: GAMEPLAY (移行前シーン)', 80, 100);
@@ -518,13 +526,21 @@ export class AnimationEngine {
     ctxB.fillStyle = gradB;
     ctxB.fillRect(0, 0, w, h);
 
+    ctxB.font = '1000px sans-serif';
+    ctxB.textAlign = 'center';
+    ctxB.textBaseline = 'middle';
+    ctxB.fillStyle = '#aaaaaa';
+    ctxB.fillText('B', w / 2, h / 2);
+
+    ctxB.textAlign = 'left';
+    ctxB.textBaseline = 'bottom';
     ctxB.fillStyle = '#f43f5e';
     ctxB.font = 'bold 36px sans-serif';
     ctxB.fillText('🎙️ SCENE B: JUST CHATTING (移行後シーン)', 80, 100);
 
     ctxB.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctxB.font = '20px sans-serif';
-    ctxB.fillText('トラックマット通過完了！ 新しいシーンへ不可逆的に移行しました', 80, 150);
+    ctxB.fillText('トラックマット通過完了！ 新しいシーンへ移行しました', 80, 150);
 
     // カメラ枠
     ctxB.strokeStyle = '#ec4899';
