@@ -6,12 +6,12 @@
 
 ## 1. プロジェクト概要 & 技術スタック
 
-* **目的**: ブラウザ完結（サーバーレス）で、OBS Studio 用の高品質スティンガートランジション動画（トラックマット MP4/WebM）を生成する。
+* **目的**: ブラウザ完結（サーバーレス）で、OBS Studio 用の高品質スティンガートランジション動画（トラックマット WebM）を生成する。
 * **主要技術**:
   * **ビルド / 言語**: TypeScript, Vite 6
   * **描画層**: HTML5 Canvas 2D API / OffscreenCanvas
   * **エンコード**: WebCodecs API (`VideoEncoder`, `VideoFrame`)
-  * **多重化 (Muxing)**: `mp4-muxer` (H.264), `webm-muxer` (VP9)
+  * **多重化 (Muxing)**: `mediabunny` (VP9 with Alpha)
   * **UI**: Vanilla CSS (Cyber/Studio ダークテーマ), Lucide アイコン, `canvas-confetti`
 
 ---
@@ -184,7 +184,7 @@ OBS のトラックマット仕様に準拠：
 ```
 mk-stinger/
 ├── index.html                   // メインHTML（スタジオUI・タイムライン・OBS設定カード・モーダル）
-├── package.json                 // 依存関係（mp4-muxer, webm-muxer, lucide, canvas-confetti）
+├── package.json                 // 依存関係（mediabunny, lucide, canvas-confetti）
 ├── tsconfig.json                // TS設定
 ├── vite.config.ts               // Vite設定
 ├── SPEC.md                      // プロジェクト仕様書
