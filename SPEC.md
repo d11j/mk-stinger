@@ -12,10 +12,10 @@
 [フレーム分配・マット生成器 (OffscreenCanvas)]
        │
        ├──> パスA: トラックマット形式 (Side-by-Side / 3840x1080)
-       │         └──> WebCodecs (H.264/VP9) ──> MP4/WebM Muxer
+       │         └──> WebCodecs (VP9 with Alpha) ──> mediabunny (WebM)
        │
        └──> パスB: 単一アルファ形式 (1920x1080)
-                 └──> VP9 (Alpha対応) または WASM-FFmpeg ──> WebM Muxer
+                 └──> VP9 (Alpha対応) ──> mediabunny (WebM)
        │
        ▼
 [メタデータ算出 & ファイルダウンロード]
@@ -91,8 +91,8 @@ OBSのトラックマット仕様に準拠した解像度・配置で出力す�
 
 2. **エンコーダ構成**:
 * API: `VideoEncoder`（WebCodecs API）
-* トラックマット時（H.264またはVP9）:
-* コーデック: `avc1.640028` (H.264 High Profile) または `vp09.00.10.08` (VP9)
+* トラックマット時（VP9 with Alpha）:
+* コーデック: `vp09.00.10.08` (VP9)
 * 幅/高さ: 3840 / 1080
 * ビットレート: 12Mbps〜20Mbps（スティンガーのシャープな輪郭維持のため高めに設定）
 
@@ -100,9 +100,8 @@ OBSのトラックマット仕様に準拠した解像度・配置で出力す�
 
 
 3. **Muxer（多重化）**:
-* トラックマットMP4: `mp4-muxer`
-* トラックマットWebM / アルファWebM: `mediabunny` または `webm-muxer`
-* エンコードされた `EncodedVideoChunk` を順次チャンク追加し、完了後に `Blob` を生成。
+* `mediabunny` (VP9 with Alpha 対応 WebM Muxer)
+* WebCodecs による並列エンコード出力を統合し、WebM Blob を生成。
 
 
 4. **メモリ管理**:
@@ -147,7 +146,7 @@ OBSのトラックマット仕様に準拠した解像度・配置で出力す�
 | **言語/ビルド** | TypeScript + Vite | 厳密な型管理と高速な開発環境 |
 | **描画層** | HTML5 Canvas 2D API / Pixi.js | 幾何学アニメーションの軽快なオフスクリーン制御 |
 | **エンコード** | WebCodecs API (`VideoEncoder`) | 高速なハードウェア/ブラウザネイティブエンコード |
-| **コンテナ化** | `mp4-muxer` / `mediabunny` | 純粋なTypeScript/JS製でWebCodecsチャンクを直接多重化可能 |
+| **コンテナ化** | `mediabunny` | ブラウザネイティブのWebCodecsと連携し、透過アルファ付きWebMを高速生成 |
 | **UIコンポーネント** | Tailwind CSS + 軽量UIフレームワーク | パラメータ調整スライダーやタイムラインUIの構築 |
 
 ## 7. 組み込みアニメーション
