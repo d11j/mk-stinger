@@ -1,17 +1,17 @@
 import { PresetPlugin } from '../../types';
 import { HexAnimationPlugin, defaultHexOptions } from './HexAnimation';
 import { SlashAnimationPlugin, defaultSlashOptions } from './SlashAnimation';
-import { IrisAnimationPlugin, defaultIrisOptions } from './IrisAnimation';
 import { GlitchAnimationPlugin, defaultGlitchOptions } from './GlitchAnimation';
 import { LineWipeAnimationPlugin, defaultLineWipeOptions } from './LineWipeAnimation';
 import { SpriteWipeAnimationPlugin, defaultSpriteWipeOptions } from './SpriteWipeAnimation';
+import { HyperJumpAnimationPlugin, defaultHyperJumpOptions } from './HyperJumpAnimation';
 
 export const ALL_PRESETS: PresetPlugin<any>[] = [
   HexAnimationPlugin,
   LineWipeAnimationPlugin,
   SpriteWipeAnimationPlugin,
+  HyperJumpAnimationPlugin,
   SlashAnimationPlugin,
-  IrisAnimationPlugin,
   GlitchAnimationPlugin,
 ];
 
@@ -23,14 +23,14 @@ export {
   HexAnimationPlugin,
   LineWipeAnimationPlugin,
   SpriteWipeAnimationPlugin,
+  HyperJumpAnimationPlugin,
   SlashAnimationPlugin,
-  IrisAnimationPlugin,
   GlitchAnimationPlugin,
   defaultHexOptions,
   defaultLineWipeOptions,
   defaultSpriteWipeOptions,
+  defaultHyperJumpOptions,
   defaultSlashOptions,
-  defaultIrisOptions,
   defaultGlitchOptions,
 };
 

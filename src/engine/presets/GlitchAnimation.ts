@@ -6,14 +6,14 @@ export interface GlitchPresetOptions extends BasePresetOptions {
 }
 
 export const defaultGlitchOptions: GlitchPresetOptions = {
-  primaryColor: '#0ea5e9', // シアン
-  secondaryColor: '#8b5cf6', // パープル
-  accentColor: '#f43f5e', // ネオンローズ
-  borderColor: '#38bdf8',
-  borderWidth: 2,
+  primaryColor: '#26a641', // GitHub 草 Level 3
+  secondaryColor: '#006d32', // GitHub 草 Level 2
+  accentColor: '#39d353', // GitHub 草 Level 4
+  borderColor: '#0e4429', // GitHub 草 Level 1 (タイル境界)
+  borderWidth: 3,
   hasGlow: true,
-  glowColor: '#8b5cf6',
-  glowBlur: 15,
+  glowColor: '#39d353',
+  glowBlur: 12,
   patternScale: 1.0,
   blockSize: 48,
   noiseAmount: 0.3,
@@ -29,7 +29,7 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
   id: 'glitch',
   name: 'CYBER GRID (デジタルブロック)',
   category: 'サイバー',
-  description: '左からデジタルグリッドボクセルが波状に展開し、全画面をデータロックして崩壊消滅するサイバーパンクスティンガー。',
+  description: '左からデジタルグリッドボクセルが波状に展開し、全画面をデータロックして崩壊消滅するサイバーパンクスティンガー。ギッハブの草。',
   defaultOptions: defaultGlitchOptions,
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
