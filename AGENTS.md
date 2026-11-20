@@ -238,3 +238,14 @@ mk-stinger/
    ```
 2. **レジストリ登録**:
    * `src/engine/presets/index.ts` の `ALL_PRESETS` 配列に追加するだけで、UIのカードや選択肢に自動反映されます。
+
+---
+
+## 6. ブランチ命名規則
+
+既存のブランチ形式に合わせ、`<type>/<kebab-case>`（Issue 紐づけ時は `<type>/<issue番号>-<kebab-case>`）を基本とします。
+
+* 機能追加: `feature/<issue番号>-<kebab-case>`（例: `feature/5-output-license-terms`）
+* バグ修正: `fix/<issue番号>-<kebab-case>`
+* リファクタリング: `refactor/<issue番号>-<kebab-case>`
+* ドキュメント更新: `docs/<kebab-case>`（Issue 紐づけ時は `docs/<issue番号>-<kebab-case>`）
