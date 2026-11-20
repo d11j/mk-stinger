@@ -30,6 +30,13 @@
         <span style="font-size: 0.8rem; color: var(--text-secondary);">
           インストール不要・ブラウザ完結スティンガージェネレーター
         </span>
+        <button type="button" class="btn-header-license" id="btnOpenLicense" title="生成動画の利用条件・ライセンスを確認">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            <polyline points="9 12 11 14 15 10"></polyline>
+          </svg>
+          利用条件・ライセンス
+        </button>
       </div>
     </header>
 
@@ -450,6 +457,10 @@
             スティンガー動画を書き出し (.webm)
           </button>
 
+          <p class="license-summary-inline">
+            生成動画は商用・収益化配信OK / クレジット不要（<button type="button" class="license-link" id="btnLicenseSummaryLink">利用条件の詳細</button>）
+          </p>
+
           <!-- OBSインポート設定ガイド (アコーディオン) -->
           <div class="guide-accordion">
             <div class="accordion-summary" id="guideToggle">
@@ -511,6 +522,9 @@
               <span id="exportResultFileInfo">サイズ: 0MB</span>
               <span id="exportResultCutInfo">移行ポイント: 1000ms</span>
             </div>
+            <p class="license-summary-inline" style="text-align: left;">
+              生成動画は商用・収益化配信OK / クレジット不要（<button type="button" class="license-link" id="btnExportLicenseLink">利用条件の詳細</button>）
+            </p>
           </div>
         </div>
         <div class="modal-footer">
@@ -523,6 +537,46 @@
             </svg>
             動画をダウンロード
           </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 利用条件・ライセンスモーダル -->
+    <div class="modal-backdrop" id="licenseModal" role="dialog" aria-modal="true" aria-labelledby="licenseModalTitle">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h3 id="licenseModalTitle" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <polyline points="9 12 11 14 15 10"></polyline>
+            </svg>
+            利用条件・ライセンス
+          </h3>
+        </div>
+        <div class="modal-body" style="gap: 16px;">
+          <div class="license-card">
+            <div class="license-card-title">生成したスティンガー動画（成果物）について</div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
+              mk-stinger で書き出した動画ファイル（.webm）には権利主張や利用制限を設けません。配信・動画制作等で自由にご利用いただけます。
+            </p>
+            <ul class="license-list">
+              <li><span class="license-badge ok">OK</span><span><strong>商用利用・収益化配信</strong>（YouTube / Twitch 収益化、企業案件、商用動画など制限なし）</span></li>
+              <li><span class="license-badge ok">OK</span><span><strong>クレジット表記不要</strong>（任意での記載・紹介は歓迎します）</span></li>
+              <li><span class="license-badge ok">OK</span><span><strong>加工・編集・二次利用</strong>（SE追加、色調補正、クライアント納品や再配布も自由）</span></li>
+              <li><span class="license-badge note">注意</span><span><strong>持ち込み素材の権利遵守</strong>（カスタム画像等を使う場合は元素材の規約に従ってください）</span></li>
+              <li><span class="license-badge info">安心</span><span><strong>完全ブラウザ完結</strong>（画像や動画が外部サーバーへ送信・保存されることはありません）</span></li>
+            </ul>
+          </div>
+
+          <div class="license-card">
+            <div class="license-card-title">アプリ本体（ソースコード）について</div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">
+              mk-stinger のソフトウェア本体は <strong>MIT License</strong> のもとで公開されています。
+            </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="btnCloseLicense">閉じる</button>
         </div>
       </div>
     </div>

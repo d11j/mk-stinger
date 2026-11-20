@@ -98,6 +98,12 @@ const exportStatusText = document.getElementById('exportStatusText') as HTMLElem
 const exportPercentText = document.getElementById('exportPercentText') as HTMLElement;
 const exportProgressBar = document.getElementById('exportProgressBar') as HTMLElement;
 const exportDetailsBox = document.getElementById('exportDetailsBox') as HTMLElement;
+
+const btnOpenLicense = document.getElementById('btnOpenLicense') as HTMLButtonElement;
+const btnLicenseSummaryLink = document.getElementById('btnLicenseSummaryLink') as HTMLButtonElement;
+const btnExportLicenseLink = document.getElementById('btnExportLicenseLink') as HTMLButtonElement;
+const licenseModal = document.getElementById('licenseModal') as HTMLElement;
+const btnCloseLicense = document.getElementById('btnCloseLicense') as HTMLButtonElement;
 const exportResultArea = document.getElementById('exportResultArea') as HTMLElement;
 const exportVideoPreview = document.getElementById('exportVideoPreview') as HTMLVideoElement;
 const exportResultFileInfo = document.getElementById('exportResultFileInfo') as HTMLElement;
@@ -675,6 +681,19 @@ function setupEventListeners() {
     hideExportModal();
   });
 
+  // ライセンス・利用条件モーダル
+  const openLicenseModal = () => licenseModal.classList.add('show');
+  const closeLicenseModal = () => licenseModal.classList.remove('show');
+  btnOpenLicense.addEventListener('click', openLicenseModal);
+  btnLicenseSummaryLink.addEventListener('click', openLicenseModal);
+  btnExportLicenseLink.addEventListener('click', openLicenseModal);
+  btnCloseLicense.addEventListener('click', closeLicenseModal);
+  licenseModal.addEventListener('click', (e) => {
+    if (e.target === licenseModal) {
+      closeLicenseModal();
+    }
+  });
+
   // ウィンドウリサイズ時に波形キャンバス再描画
   window.addEventListener('resize', () => {
     drawCoverageWaveform();
@@ -690,6 +709,11 @@ function setupKeyboardShortcuts() {
       e.target instanceof HTMLSelectElement ||
       e.target instanceof HTMLTextAreaElement
     ) {
+      return;
+    }
+
+    if (e.code === 'Escape' && licenseModal.classList.contains('show')) {
+      licenseModal.classList.remove('show');
       return;
     }
 
