@@ -488,7 +488,9 @@ body {
   border: 1px dashed var(--border-color);
   border-radius: var(--radius-sm);
   padding: 6px 10px;
-  transition: border-color 0.15s, background-color 0.15s;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
 }
 
 .scene-slot.drag-over {
@@ -938,7 +940,9 @@ body {
   border: 1px dashed var(--border-color);
   border-radius: var(--radius-sm);
   padding: 10px;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
 }
 
 .custom-upload-box:hover,

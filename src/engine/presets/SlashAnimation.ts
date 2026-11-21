@@ -25,7 +25,8 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
   id: 'slash',
   name: 'SLASH WIPE (斜めスライス)',
   category: 'ダイナミック',
-  description: '鋭角なスラッシュストライプが画面を高速で走り抜け、全画面をロックして素早く飛び去るesports風スティンガー。',
+  description:
+    '鋭角なスラッシュストライプが画面を高速で走り抜け、全画面をロックして素早く飛び去るesports風スティンガー。',
   defaultOptions: defaultSlashOptions,
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
@@ -43,10 +44,10 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
       return x === 0
         ? 0
         : x === 1
-        ? 1
-        : x < 0.5
-        ? Math.pow(2, 20 * x - 10) / 2
-        : (2 - Math.pow(2, -20 * x + 10)) / 2;
+          ? 1
+          : x < 0.5
+            ? Math.pow(2, 20 * x - 10) / 2
+            : (2 - Math.pow(2, -20 * x + 10)) / 2;
     };
 
     const count = options.stripeCount;
@@ -124,7 +125,7 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
       for (let j = 0; j < 5; j++) {
         const lineY = (height / 6) * (j + 1);
         const lineLen = 150 + Math.sin(frameIndex + j) * 80;
-        const lineX = (width * progress * 2 + j * 120) % (width + 300) - 100;
+        const lineX = ((width * progress * 2 + j * 120) % (width + 300)) - 100;
         ctx.beginPath();
         ctx.moveTo(lineX, lineY);
         ctx.lineTo(lineX + lineLen, lineY);
@@ -169,4 +170,3 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
     ctx.fill();
   },
 };
-

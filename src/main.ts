@@ -59,19 +59,27 @@ const inputLineAngle = document.getElementById('inputLineAngle') as HTMLInputEle
 const valLineAngle = document.getElementById('valLineAngle') as HTMLElement;
 const inputLineSpeedLines = document.getElementById('inputLineSpeedLines') as HTMLInputElement;
 
-const spriteWipeSpecificControls = document.getElementById('spriteWipeSpecificControls') as HTMLElement;
+const spriteWipeSpecificControls = document.getElementById(
+  'spriteWipeSpecificControls'
+) as HTMLElement;
 const selectSpriteType = document.getElementById('selectSpriteType') as HTMLSelectElement;
 const customImageContainer = document.getElementById('customImageContainer') as HTMLElement;
 const btnUploadImageTrigger = document.getElementById('btnUploadImageTrigger') as HTMLButtonElement;
-const inputSpriteCustomImage = document.getElementById('inputSpriteCustomImage') as HTMLInputElement;
-const customImagePreviewWrapper = document.getElementById('customImagePreviewWrapper') as HTMLElement;
+const inputSpriteCustomImage = document.getElementById(
+  'inputSpriteCustomImage'
+) as HTMLInputElement;
+const customImagePreviewWrapper = document.getElementById(
+  'customImagePreviewWrapper'
+) as HTMLElement;
 const customImageThumb = document.getElementById('customImageThumb') as HTMLImageElement;
 const customImageName = document.getElementById('customImageName') as HTMLElement;
 const customImageDim = document.getElementById('customImageDim') as HTMLElement;
 const btnClearCustomImage = document.getElementById('btnClearCustomImage') as HTMLButtonElement;
 const inputSpriteSize = document.getElementById('inputSpriteSize') as HTMLInputElement;
 const valSpriteSize = document.getElementById('valSpriteSize') as HTMLElement;
-const inputSpriteSizeScatter = document.getElementById('inputSpriteSizeScatter') as HTMLInputElement;
+const inputSpriteSizeScatter = document.getElementById(
+  'inputSpriteSizeScatter'
+) as HTMLInputElement;
 const valSpriteSizeScatter = document.getElementById('valSpriteSizeScatter') as HTMLElement;
 const inputSpriteCount = document.getElementById('inputSpriteCount') as HTMLInputElement;
 const valSpriteCount = document.getElementById('valSpriteCount') as HTMLElement;
@@ -122,17 +130,14 @@ let currentPresetId = 'hex';
 let currentPreset = PRESET_MAP.get(currentPresetId)!;
 let currentOptions = { ...currentPreset.defaultOptions };
 
-const DEFAULT_EXPORT_DETAILS_TEXT = 'WebCodecs API により、ブラウザ上で直接高速エンコードを実行しています。';
+const DEFAULT_EXPORT_DETAILS_TEXT =
+  'WebCodecs API により、ブラウザ上で直接高速エンコードを実行しています。';
 
 let exportPipeline: VideoExportPipeline | null = null;
 let isExporting = false;
 
 // AnimationEngine の初期化
-const engine = new AnimationEngine(
-  previewCanvas,
-  currentPreset,
-  currentOptions
-);
+const engine = new AnimationEngine(previewCanvas, currentPreset, currentOptions);
 
 // 画面読み込み時の初期UIセットアップ
 function init() {
@@ -797,19 +802,14 @@ async function startExport() {
   exportPipeline = pipeline;
 
   try {
-    const result = await pipeline.exportVideo(
-      currentPreset,
-      currentOptions,
-      exportConfig,
-      (ev) => {
-        if (exportPipeline !== pipeline) {
-          return;
-        }
-        exportStatusText.textContent = ev.statusMessage;
-        exportPercentText.textContent = `${ev.progressPercent}%`;
-        exportProgressBar.style.width = `${ev.progressPercent}%`;
+    const result = await pipeline.exportVideo(currentPreset, currentOptions, exportConfig, (ev) => {
+      if (exportPipeline !== pipeline) {
+        return;
       }
-    );
+      exportStatusText.textContent = ev.statusMessage;
+      exportPercentText.textContent = `${ev.progressPercent}%`;
+      exportProgressBar.style.width = `${ev.progressPercent}%`;
+    });
 
     if (exportPipeline !== pipeline) {
       return;

@@ -78,13 +78,7 @@ describe('TrackMatteRenderer', () => {
     const renderer = new TrackMatteRenderer(width, height);
 
     HexAnimationPlugin.render(renderer.animCtx, 1.0, 59, 60, width, height, defaultHexOptions);
-    const output = renderer.compositeSideBySide(
-      HexAnimationPlugin,
-      1.0,
-      59,
-      60,
-      defaultHexOptions
-    );
+    const output = renderer.compositeSideBySide(HexAnimationPlugin, 1.0, 59, 60, defaultHexOptions);
 
     expect(output.width).toBe(width * 2);
     expect(output.height).toBe(height);

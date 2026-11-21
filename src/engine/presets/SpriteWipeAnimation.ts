@@ -52,7 +52,10 @@ function deterministicRandom(seed: number): number {
 /**
  * 5角星のパスを生成
  */
-function drawStarPath(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, r: number) {
+function drawStarPath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  r: number
+) {
   const innerR = r * 0.42;
   ctx.beginPath();
   for (let i = 0; i < 10; i++) {
@@ -69,7 +72,10 @@ function drawStarPath(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingCo
 /**
  * ハートのパスを生成
  */
-function drawHeartPath(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, s: number) {
+function drawHeartPath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  s: number
+) {
   const r = s * 0.85;
   ctx.beginPath();
   ctx.moveTo(0, r * 0.35);
@@ -83,7 +89,10 @@ function drawHeartPath(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingC
 /**
  * 4点キラキラスター（スパークル）のパスを生成
  */
-function drawSparklePath(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, r: number) {
+function drawSparklePath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  r: number
+) {
   const inner = r * 0.18;
   ctx.beginPath();
   for (let i = 0; i < 8; i++) {
@@ -100,7 +109,10 @@ function drawSparklePath(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderin
 /**
  * ダイヤ（ひし形）のパスを生成
  */
-function drawDiamondPath(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, r: number) {
+function drawDiamondPath(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  r: number
+) {
   ctx.beginPath();
   ctx.moveTo(0, -r);
   ctx.lineTo(r * 0.7, 0);
@@ -155,12 +167,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
     }
 
     // メインラインのグラデーション塗り（セカンダリ → プライマリ → アクセント）
-    const grad = ctx.createLinearGradient(
-      centerX - halfW,
-      0,
-      centerX + halfW,
-      0
-    );
+    const grad = ctx.createLinearGradient(centerX - halfW, 0, centerX + halfW, 0);
     grad.addColorStop(0, options.secondaryColor);
     grad.addColorStop(0.5, options.primaryColor);
     grad.addColorStop(1, options.accentColor);
@@ -260,7 +267,12 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
         const radius = currentSize / 2;
 
         // カラー：アクセント色またはプライマリ色（インデックスで交互に変化）
-        const shapeColor = i % 3 === 0 ? options.accentColor : (i % 3 === 1 ? options.primaryColor : options.secondaryColor);
+        const shapeColor =
+          i % 3 === 0
+            ? options.accentColor
+            : i % 3 === 1
+              ? options.primaryColor
+              : options.secondaryColor;
         ctx.fillStyle = shapeColor;
 
         if (options.spriteType === 'heart') {

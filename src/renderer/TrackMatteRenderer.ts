@@ -88,15 +88,7 @@ export class TrackMatteRenderer {
     this.maskCtx.fillRect(0, 0, w, h);
 
     // プリセット固有のトラックマットマスクを描画
-    preset.renderMatte(
-      this.maskCtx,
-      progress,
-      frameIndex,
-      totalFrames,
-      w,
-      h,
-      options
-    );
+    preset.renderMatte(this.maskCtx, progress, frameIndex, totalFrames, w, h, options);
 
     // 右半分へマスクを転写
     this.outputCtx.drawImage(this.maskCanvas, w, 0);

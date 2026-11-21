@@ -60,14 +60,10 @@ export const HyperJumpAnimationPlugin: PresetPlugin<BasePresetOptions> = {
       ? progress / SPLIT_PROGRESS
       : (progress - SPLIT_PROGRESS) / (1.0 - SPLIT_PROGRESS);
 
-    const currentR = isInward
-      ? maxR * (1 - easeInCharge(phaseT))
-      : maxR * easeOutBurst(phaseT);
+    const currentR = isInward ? maxR * (1 - easeInCharge(phaseT)) : maxR * easeOutBurst(phaseT);
 
     // 画面端でのフェードイン / フェードアウト
-    const edgeAlpha = isInward
-      ? Math.min(1, phaseT / 0.12)
-      : Math.min(1, (1 - phaseT) / 0.12);
+    const edgeAlpha = isInward ? Math.min(1, phaseT / 0.12) : Math.min(1, (1 - phaseT) / 0.12);
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -94,7 +90,10 @@ export const HyperJumpAnimationPlugin: PresetPlugin<BasePresetOptions> = {
         if (isInward) {
           // 収縮リングの外側〜周囲から中心に向かって流れ込む
           const travel = phaseT * 0.35 * maxR * speedFactor;
-          rStart = Math.max(12 * scale, currentR + (40 + seededValue(i, 5) * 260) * scale - travel * 0.25);
+          rStart = Math.max(
+            12 * scale,
+            currentR + (40 + seededValue(i, 5) * 260) * scale - travel * 0.25
+          );
           rEnd = rStart + lenBase * (0.5 + phaseT * 0.8);
         } else {
           // 中心から外側へ弾け飛ぶ流線
