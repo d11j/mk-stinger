@@ -1,4 +1,5 @@
 import { BasePresetOptions, PresetPlugin } from '../../types';
+import { easeInOutCubic } from '../utils/easing';
 
 export interface LineWipePresetOptions extends BasePresetOptions {
   bandWidth: number; // メイン帯の幅 (px)
@@ -16,19 +17,11 @@ export const defaultLineWipeOptions: LineWipePresetOptions = {
   hasGlow: true,
   glowColor: '#06b6d4',
   glowBlur: 24,
-  patternScale: 1.0,
   bandWidth: 180,
   angleDeg: 28,
   stripeCount: 3,
   speedLines: true,
 };
-
-/**
- * 画面中央を高速通過するスムーズなイージング関数
- */
-function easeInOutCubic(x: number): number {
-  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-}
 
 export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
   id: 'line-wipe',
@@ -37,6 +30,40 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
   description:
     '画面全体を覆わずに、幅のある斜めラインが左から右へ駆け抜け、通過した左側を次シーンへ切り替えるトラックマット特化型スティンガー。',
   defaultOptions: defaultLineWipeOptions,
+  params: [
+    {
+      key: 'bandWidth',
+      type: 'range',
+      label: '斜線の幅 (太さ)',
+      min: 60,
+      max: 360,
+      step: 10,
+      unit: 'px',
+    },
+    {
+      key: 'angleDeg',
+      type: 'range',
+      label: '傾き角度',
+      min: 10,
+      max: 45,
+      step: 1,
+      unit: '°',
+    },
+    {
+      key: 'stripeCount',
+      type: 'range',
+      label: 'サブライン本数',
+      min: 0,
+      max: 3,
+      step: 1,
+      unit: '本',
+    },
+    {
+      key: 'speedLines',
+      type: 'boolean',
+      label: 'スピードダッシュ効果',
+    },
+  ],
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
@@ -45,7 +72,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
     const tan = Math.tan(rad);
     const skewOffset = height * tan;
 
-    const baseBandW = options.bandWidth * (options.patternScale || 1.0);
+    const baseBandW = options.bandWidth;
     const totalExtra = 350; // 前後サブラインや発光の余白
 
     // 移動範囲（画面外左から画面外右まで完全に抜け切るスパン）
@@ -187,7 +214,6 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
     const tan = Math.tan(rad);
     const skewOffset = height * tan;
 
-    const baseBandW = options.bandWidth * (options.patternScale || 1.0);
     const totalExtra = 350;
 
     const startX = -totalExtra;

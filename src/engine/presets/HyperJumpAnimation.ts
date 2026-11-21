@@ -1,6 +1,11 @@
 import { BasePresetOptions, PresetPlugin } from '../../types';
+import { easeInCharge, easeOutBurst } from '../utils/easing';
 
-export const defaultHyperJumpOptions: BasePresetOptions = {
+export interface HyperJumpPresetOptions extends BasePresetOptions {
+  effectScale: number;
+}
+
+export const defaultHyperJumpOptions: HyperJumpPresetOptions = {
   primaryColor: '#00f0ff', // ハイパースペース・シアン
   secondaryColor: '#0284c7', // ディープブルー
   accentColor: '#e0f2fe', // アイスホワイトブルー
@@ -9,26 +14,10 @@ export const defaultHyperJumpOptions: BasePresetOptions = {
   hasGlow: true,
   glowColor: '#00f0ff',
   glowBlur: 30,
-  patternScale: 1.0,
+  effectScale: 1.0,
 };
 
 const SPLIT_PROGRESS = 0.55;
-
-/**
- * 収縮フェーズ用イージング（ややゆっくり溜めて中心へ向かって加速）
- */
-function easeInCharge(t: number): number {
-  const clamped = Math.max(0, Math.min(1, t));
-  return 0.2 * clamped + 0.8 * clamped * clamped * clamped;
-}
-
-/**
- * 拡大フェーズ用イージング（中心から一気に高速で抜ける）
- */
-function easeOutBurst(t: number): number {
-  const clamped = Math.max(0, Math.min(1, t));
-  return 1 - Math.pow(1 - clamped, 4);
-}
 
 /**
  * 決定論的な擬似乱数 (0.0 〜 1.0)
@@ -38,13 +27,24 @@ function seededValue(index: number, salt: number): number {
   return x - Math.floor(x);
 }
 
-export const HyperJumpAnimationPlugin: PresetPlugin<BasePresetOptions> = {
+export const HyperJumpAnimationPlugin: PresetPlugin<HyperJumpPresetOptions> = {
   id: 'hyper-jump',
   name: 'HYPER JUMP (ハイパージャンプ)',
   category: 'トラックマット特化',
   description:
     '画面外側から中心へ光のリングが収縮してエネルギーを溜め、中心到達のフラッシュと同時に次シーンが中心から外側へ一気に広がるFSDジャンプ風トランジション。',
   defaultOptions: defaultHyperJumpOptions,
+  params: [
+    {
+      key: 'effectScale',
+      type: 'range',
+      label: 'エフェクト倍率',
+      min: 0.5,
+      max: 2.0,
+      step: 0.1,
+      unit: '×',
+    },
+  ],
 
   render(ctx, progress, _frameIndex, _totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
@@ -53,7 +53,7 @@ export const HyperJumpAnimationPlugin: PresetPlugin<BasePresetOptions> = {
     const cy = height / 2;
     const maxR = Math.hypot(cx, cy) * 1.15;
     const resScale = Math.min(width, height) / 1080;
-    const scale = (options.patternScale || 1.0) * resScale;
+    const scale = (options.effectScale || 1.0) * resScale;
 
     const isInward = progress < SPLIT_PROGRESS;
     const phaseT = isInward

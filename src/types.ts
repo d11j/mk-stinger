@@ -28,12 +28,10 @@ export interface BasePresetOptions {
   hasGlow: boolean;
   glowColor: string;
   glowBlur: number;
-  patternScale: number;
 }
 
 export interface HexPresetOptions extends BasePresetOptions {
   staggerDelay: number;
-  shrinkScale: number;
   rotationEffect: boolean;
 }
 
@@ -50,12 +48,57 @@ export interface SpriteWipePresetOptions extends BasePresetOptions {
   customImage: HTMLImageElement | null; // アップロード画像（永続化なし）
 }
 
+export interface ParamVisibilityCondition<T> {
+  key: keyof T & string;
+  equals: unknown;
+}
+
+interface BaseParamField<T> {
+  key: keyof T & string;
+  label: string;
+  visibleWhen?: ParamVisibilityCondition<T>;
+}
+
+export interface RangeParamField<T> extends BaseParamField<T> {
+  type: 'range';
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+  format?: 'number' | 'percent';
+}
+
+export interface BooleanParamField<T> extends BaseParamField<T> {
+  type: 'boolean';
+  checkboxLabel?: string;
+}
+
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
+export interface SelectParamField<T> extends BaseParamField<T> {
+  type: 'select';
+  options: SelectOption[];
+}
+
+export interface ImageParamField<T> extends BaseParamField<T> {
+  type: 'image';
+  accept?: string;
+  hint?: string;
+}
+
+export type PresetParamField<T = any> =
+  RangeParamField<T> | BooleanParamField<T> | SelectParamField<T> | ImageParamField<T>;
+
 export interface PresetPlugin<T = any> {
   id: string;
   name: string;
   category: string;
   description: string;
   defaultOptions: T;
+  params: PresetParamField<T>[];
   render: (
     ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
     progress: number,
