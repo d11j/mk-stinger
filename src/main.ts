@@ -369,11 +369,15 @@ function setupEventListeners() {
     engine.stepFrame(1);
   });
 
+  const syncLoopButtonUI = (isLooping: boolean) => {
+    btnToggleLoop.classList.toggle('active', isLooping);
+    btnToggleLoop.setAttribute('aria-pressed', String(isLooping));
+  };
+
   btnToggleLoop.addEventListener('click', () => {
     const nextLoop = !engine.getIsLooping();
     engine.setLooping(nextLoop);
-    btnToggleLoop.classList.toggle('active', nextLoop);
-    btnToggleLoop.setAttribute('aria-pressed', String(nextLoop));
+    syncLoopButtonUI(nextLoop);
   });
 
   btnOneShotTest.addEventListener('click', () => {
@@ -381,6 +385,7 @@ function setupEventListeners() {
       setBackgroundMode('scene_sim');
     }
     engine.playOneShot();
+    syncLoopButtonUI(engine.getIsLooping());
   });
 
   // シークバーのクリック & ドラッグ

@@ -24,7 +24,6 @@ export class AnimationEngine {
 
   private isPlaying: boolean = false;
   private isLooping: boolean = true;
-  private isOneShotPlaying: boolean = false;
   private playTimerId: number | null = null;
   private backgroundMode: BackgroundMode = 'checkerboard';
   private baseWidth: number = 1920;
@@ -234,7 +233,7 @@ export class AnimationEngine {
 
       this.stepFrame(1);
 
-      if ((!this.isLooping || this.isOneShotPlaying) && this.currentFrame >= this.totalFrames - 1) {
+      if (!this.isLooping && this.currentFrame >= this.totalFrames - 1) {
         this.pause();
         return;
       }
@@ -250,14 +249,14 @@ export class AnimationEngine {
   }
 
   /**
-   * 1回切替テスト用: 先頭フレーム (Scene A) から末尾フレーム (Scene B) まで1回だけ再生して停止する
+   * 1回切替テスト用: ループ再生を OFF にし、先頭フレーム (Scene A) から末尾フレーム (Scene B) まで再生して停止する
    */
   public playOneShot() {
     if (this.isPlaying) {
       this.pause();
     }
+    this.setLooping(false);
     this.currentFrame = 0;
-    this.isOneShotPlaying = true;
     this.renderCurrentFrame();
     this.play();
   }
@@ -265,7 +264,6 @@ export class AnimationEngine {
   public pause() {
     if (!this.isPlaying) return;
     this.isPlaying = false;
-    this.isOneShotPlaying = false;
     if (this.playTimerId !== null) {
       clearTimeout(this.playTimerId);
       this.playTimerId = null;
@@ -294,12 +292,11 @@ export class AnimationEngine {
   }
 
   public stepFrame(delta: number) {
-    const shouldLoop = this.isLooping && !this.isOneShotPlaying;
     let next = this.currentFrame + delta;
     if (next >= this.totalFrames) {
-      next = shouldLoop ? 0 : this.totalFrames - 1;
+      next = this.isLooping ? 0 : this.totalFrames - 1;
     } else if (next < 0) {
-      next = shouldLoop ? this.totalFrames - 1 : 0;
+      next = this.isLooping ? this.totalFrames - 1 : 0;
     }
     this.currentFrame = next;
     this.renderCurrentFrame();
