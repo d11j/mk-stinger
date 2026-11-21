@@ -1,15 +1,7 @@
-import { BasePresetOptions, PresetPlugin, SpriteType } from '../../types';
+import { PresetPlugin, SpriteWipePresetOptions } from '../../types';
+import { easeInOutCubic } from '../utils/easing';
 
-export interface SpriteWipePresetOptions extends BasePresetOptions {
-  angleDeg: number; // 傾き角度 (度)
-  spriteType: SpriteType; // スプライトの種類
-  spriteCount: number; // スプライトの配置数
-  spriteSize: number; // スプライトの大きさ (px)
-  sizeScatter: number; // スプライトサイズの散布幅 (0.0 〜 1.0)
-  spriteScatter: number; // ラインからの散布幅 (px)
-  spriteRotate: boolean; // 自転アニメーション
-  customImage: HTMLImageElement | null; // アップロードされたカスタム画像（永続化なし）
-}
+export type { SpriteWipePresetOptions } from '../../types';
 
 // 内部定数: スプライトを引き立たせるためのスリムなセンターライン幅
 const FIXED_LINE_WIDTH = 4;
@@ -23,7 +15,6 @@ export const defaultSpriteWipeOptions: SpriteWipePresetOptions = {
   hasGlow: true,
   glowColor: '#ec4899',
   glowBlur: 16,
-  patternScale: 1.0,
   angleDeg: 26,
   spriteType: 'star',
   spriteCount: 16,
@@ -33,13 +24,6 @@ export const defaultSpriteWipeOptions: SpriteWipePresetOptions = {
   spriteRotate: true,
   customImage: null,
 };
-
-/**
- * 決定論的イージング関数（画面中央を加速して気持ちよく駆け抜ける）
- */
-function easeInOutCubic(x: number): number {
-  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-}
 
 /**
  * インデックスに基づく決定論的擬似乱数 (0.0 - 1.0)
@@ -128,6 +112,79 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
   description:
     'シンプルな1本ラインに星やハート、任意の画像スプライト（PNG/SVG）を散りばめて駆け抜ける、トラックマット特化型スティンガー。',
   defaultOptions: defaultSpriteWipeOptions,
+  params: [
+    {
+      key: 'spriteType',
+      type: 'select',
+      label: 'スプライト装飾',
+      options: [
+        { value: 'star', label: '★ スター (星)' },
+        { value: 'heart', label: '♥ ハート' },
+        { value: 'sparkle', label: '✨ スパークル (キラキラ)' },
+        { value: 'diamond', label: '◆ ダイヤモンド' },
+        { value: 'circle', label: '● バブル (円)' },
+        { value: 'custom', label: '📁 任意のカスタム画像 (PNG / SVG)' },
+      ],
+    },
+    {
+      key: 'customImage',
+      type: 'image',
+      label: 'カスタム画像ファイル',
+      accept: 'image/png,image/svg+xml,image/webp,image/jpeg',
+      hint: '※ 透過PNG / SVG 推奨。クリックまたは画像をドラッグ＆ドロップして読み込みます。メモリ上でのみ保持され、外部送信はされません。',
+      visibleWhen: { key: 'spriteType', equals: 'custom' },
+    },
+    {
+      key: 'spriteSize',
+      type: 'range',
+      label: 'スプライトサイズ',
+      min: 32,
+      max: 200,
+      step: 4,
+      unit: 'px',
+    },
+    {
+      key: 'sizeScatter',
+      type: 'range',
+      label: 'サイズのばらつき',
+      min: 0,
+      max: 1,
+      step: 0.05,
+      format: 'percent',
+    },
+    {
+      key: 'spriteCount',
+      type: 'range',
+      label: 'スプライト配置個数',
+      min: 4,
+      max: 36,
+      step: 1,
+      unit: '個',
+    },
+    {
+      key: 'spriteScatter',
+      type: 'range',
+      label: '配置の散らばり',
+      min: 0,
+      max: 100,
+      step: 2,
+      unit: 'px',
+    },
+    {
+      key: 'spriteRotate',
+      type: 'boolean',
+      label: '回転アニメーション',
+    },
+    {
+      key: 'angleDeg',
+      type: 'range',
+      label: '傾き角度',
+      min: 10,
+      max: 45,
+      step: 1,
+      unit: '°',
+    },
+  ],
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
@@ -136,7 +193,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
     const tan = Math.tan(rad);
     const skewOffset = height * tan;
 
-    const baseLineW = FIXED_LINE_WIDTH * (options.patternScale || 1.0);
+    const baseLineW = FIXED_LINE_WIDTH;
     const extraMargin = 400; // 画面外から画面外への移動余白
 
     // 移動範囲（画面外左から画面外右まで完全に抜け切るスパン）
@@ -226,7 +283,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
       const currentSize = Math.max(8, baseSize * sizeScale);
 
       // 自転・回転角
-      let angle = 0;
+      let angle: number;
       if (options.spriteRotate) {
         // ラインの疾走に合わせてクルクル回転
         const rotateDirection = i % 2 === 0 ? 1 : -1;

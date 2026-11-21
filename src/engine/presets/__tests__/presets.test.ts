@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createCanvas } from '@napi-rs/canvas';
 import { ALL_PRESETS, PRESET_MAP } from '../index';
+import { GlitchAnimationPlugin, defaultGlitchOptions } from '../GlitchAnimation';
 
 const TEST_WIDTH = 320;
 const TEST_HEIGHT = 180;
@@ -44,6 +45,7 @@ describe('Preset Registry', () => {
       expect(PRESET_MAP.get(preset.id)).toBe(preset);
       expect(preset.name.length).toBeGreaterThan(0);
       expect(preset.defaultOptions).toBeDefined();
+      expect(Array.isArray(preset.params)).toBe(true);
     }
   });
 });
@@ -116,6 +118,36 @@ describe.each(ALL_PRESETS)('Preset: $id ($name)', (preset) => {
     expect(Buffer.from(firstData).equals(Buffer.from(secondData))).toBe(true);
   });
 
+  it('params スキーマが defaultOptions と整合していること', () => {
+    const keys = preset.params.map((p) => p.key);
+    expect(new Set(keys).size).toBe(keys.length);
+
+    for (const field of preset.params) {
+      expect(field.label.length).toBeGreaterThan(0);
+      expect(Object.prototype.hasOwnProperty.call(preset.defaultOptions, field.key)).toBe(true);
+
+      const defaultValue = preset.defaultOptions[field.key];
+      if (field.type === 'range') {
+        expect(field.min).toBeLessThan(field.max);
+        expect(field.step).toBeGreaterThan(0);
+        expect(typeof defaultValue).toBe('number');
+        expect(defaultValue).toBeGreaterThanOrEqual(field.min);
+        expect(defaultValue).toBeLessThanOrEqual(field.max);
+      } else if (field.type === 'boolean') {
+        expect(typeof defaultValue).toBe('boolean');
+      } else if (field.type === 'select') {
+        expect(field.options.length).toBeGreaterThan(0);
+        expect(field.options.some((opt) => opt.value === defaultValue)).toBe(true);
+      }
+
+      if (field.visibleWhen) {
+        expect(
+          Object.prototype.hasOwnProperty.call(preset.defaultOptions, field.visibleWhen.key)
+        ).toBe(true);
+      }
+    }
+  });
+
   it('renderMatte の開始フレームが黒 (Scene A)、終了フレームが全面白 (Scene B) であること', () => {
     const renderMatteAt = (progress: number, frameIndex: number) => {
       const { ctx } = createTestContext();
@@ -138,12 +170,7 @@ describe.each(ALL_PRESETS)('Preset: $id ($name)', (preset) => {
     const endRatio = renderMatteAt(1.0, TOTAL_FRAMES - 1);
 
     // 開始フレーム: Scene A (黒)
-    // glitch は normDist ジッターにより左上に微小セルが出現する現行仕様のため許容値を設ける
-    if (preset.id === 'glitch') {
-      expect(startRatio).toBeLessThan(0.05);
-    } else {
-      expect(startRatio).toBe(0);
-    }
+    expect(startRatio).toBe(0);
 
     // 終了フレーム: 全面 Scene B (白)
     expect(endRatio).toBe(1);
@@ -152,4 +179,64 @@ describe.each(ALL_PRESETS)('Preset: $id ($name)', (preset) => {
     expect(midRatio).toBeGreaterThanOrEqual(startRatio);
     expect(endRatio).toBeGreaterThanOrEqual(midRatio);
   });
+});
+
+describe('GlitchAnimation noiseAmount option', () => {
+  it.each([0, 0.25, 0.5])(
+    'noiseAmount=%s のときも開始フレーム黒・終了フレーム白で決定論的に描画されること',
+    (noiseAmount) => {
+      const options = { ...defaultGlitchOptions, noiseAmount };
+      const start = createTestContext();
+      start.ctx.fillStyle = '#000000';
+      start.ctx.fillRect(0, 0, TEST_WIDTH, TEST_HEIGHT);
+      GlitchAnimationPlugin.renderMatte(
+        start.ctx,
+        0.0,
+        0,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      expect(measureWhiteRatio(start.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(0);
+
+      const end = createTestContext();
+      end.ctx.fillStyle = '#000000';
+      end.ctx.fillRect(0, 0, TEST_WIDTH, TEST_HEIGHT);
+      GlitchAnimationPlugin.renderMatte(
+        end.ctx,
+        1.0,
+        TOTAL_FRAMES - 1,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      expect(measureWhiteRatio(end.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(1);
+
+      const midA = createTestContext();
+      const midB = createTestContext();
+      GlitchAnimationPlugin.render(
+        midA.ctx,
+        0.3,
+        18,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      GlitchAnimationPlugin.render(
+        midB.ctx,
+        0.3,
+        18,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      const dataA = midA.ctx.getImageData(0, 0, TEST_WIDTH, TEST_HEIGHT).data;
+      const dataB = midB.ctx.getImageData(0, 0, TEST_WIDTH, TEST_HEIGHT).data;
+      expect(Buffer.from(dataA).equals(Buffer.from(dataB))).toBe(true);
+    }
+  );
 });

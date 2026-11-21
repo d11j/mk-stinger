@@ -1,4 +1,5 @@
 import { HexPresetOptions, PresetPlugin } from '../../types';
+import { easeInBack, easeOutBack } from '../utils/easing';
 
 interface HexCell {
   cx: number;
@@ -20,9 +21,7 @@ export const defaultHexOptions: HexPresetOptions = {
   hasGlow: true,
   glowColor: '#38bdf8',
   glowBlur: 15,
-  patternScale: 1.0,
   staggerDelay: 0.65, // 左から右への展開のディレイ幅
-  shrinkScale: 0.0,
   rotationEffect: true,
 };
 
@@ -121,6 +120,21 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
   description:
     '画面左から1つずつ六角形を画面全体に充填し、充填完了時に全六角形が縮小消滅するスティンガー。六角形の高さは画面の1/3。',
   defaultOptions: defaultHexOptions,
+  params: [
+    {
+      key: 'staggerDelay',
+      type: 'range',
+      label: '広がるスピード (波の幅)',
+      min: 0.2,
+      max: 0.9,
+      step: 0.05,
+    },
+    {
+      key: 'rotationEffect',
+      type: 'boolean',
+      label: '回転エフェクト',
+    },
+  ],
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
@@ -141,22 +155,9 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
     // 縮小フェーズの進捗 (0.0 -> 1.0)
     const shrinkT = isShrinkPhase ? (progress - holdEndProgress) / (1.0 - holdEndProgress) : 0;
 
-    // イージング関数
-    const easeOutBack = (x: number): number => {
-      const c1 = 1.70158;
-      const c3 = c1 + 1;
-      return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
-    };
-
-    const easeInBack = (x: number): number => {
-      const c1 = 1.70158;
-      const c3 = c1 + 1;
-      return c3 * x * x * x - c1 * x * x;
-    };
-
     // 六角形の描画
     for (const cell of cells) {
-      let scale = 0;
+      let scale: number;
       let rot = 0;
 
       if (isHoldPhase) {
@@ -227,15 +228,6 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
 
         ctx.stroke();
       }
-
-      // 六角形の内側にサイバー幾何学アクセント
-      // if (scale > 0.7 && !isHoldPhase) {
-      //   ctx.shadowBlur = 0;
-      //   ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-      //   ctx.lineWidth = 1;
-      //   drawHexagonPath(ctx, 0, 0, currentRadius * 0.45, -rot);
-      //   ctx.stroke();
-      // }
 
       ctx.restore();
     }

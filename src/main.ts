@@ -3,6 +3,8 @@ import { ALL_PRESETS, PRESET_MAP } from './engine/presets';
 import { AnimationEngine, BackgroundMode } from './engine/AnimationEngine';
 import { ExportConfig, RESOLUTIONS, ResolutionPreset } from './types';
 import { VideoExportPipeline } from './encoder/VideoExportPipeline';
+import { PresetParamsPanel } from './ui/PresetParamsPanel';
+import { readImageFile, setupDropZone } from './ui/fileHelpers';
 
 // DOM 要素の取得
 const previewCanvas = document.getElementById('previewCanvas') as HTMLCanvasElement;
@@ -46,48 +48,11 @@ const borderColorInput = document.getElementById('borderColorInput') as HTMLInpu
 const inputBorderWidth = document.getElementById('inputBorderWidth') as HTMLInputElement;
 const valBorderWidth = document.getElementById('valBorderWidth') as HTMLElement;
 const inputHasGlow = document.getElementById('inputHasGlow') as HTMLInputElement;
+const glowBlurControlGroup = document.getElementById('glowBlurControlGroup') as HTMLElement;
+const inputGlowBlur = document.getElementById('inputGlowBlur') as HTMLInputElement;
+const valGlowBlur = document.getElementById('valGlowBlur') as HTMLElement;
 
-const hexSpecificControls = document.getElementById('hexSpecificControls') as HTMLElement;
-const inputHexStagger = document.getElementById('inputHexStagger') as HTMLInputElement;
-const valHexStagger = document.getElementById('valHexStagger') as HTMLElement;
-const inputHexRotation = document.getElementById('inputHexRotation') as HTMLInputElement;
-
-const lineWipeSpecificControls = document.getElementById('lineWipeSpecificControls') as HTMLElement;
-const inputLineWidth = document.getElementById('inputLineWidth') as HTMLInputElement;
-const valLineWidth = document.getElementById('valLineWidth') as HTMLElement;
-const inputLineAngle = document.getElementById('inputLineAngle') as HTMLInputElement;
-const valLineAngle = document.getElementById('valLineAngle') as HTMLElement;
-const inputLineSpeedLines = document.getElementById('inputLineSpeedLines') as HTMLInputElement;
-
-const spriteWipeSpecificControls = document.getElementById(
-  'spriteWipeSpecificControls'
-) as HTMLElement;
-const selectSpriteType = document.getElementById('selectSpriteType') as HTMLSelectElement;
-const customImageContainer = document.getElementById('customImageContainer') as HTMLElement;
-const btnUploadImageTrigger = document.getElementById('btnUploadImageTrigger') as HTMLButtonElement;
-const inputSpriteCustomImage = document.getElementById(
-  'inputSpriteCustomImage'
-) as HTMLInputElement;
-const customImagePreviewWrapper = document.getElementById(
-  'customImagePreviewWrapper'
-) as HTMLElement;
-const customImageThumb = document.getElementById('customImageThumb') as HTMLImageElement;
-const customImageName = document.getElementById('customImageName') as HTMLElement;
-const customImageDim = document.getElementById('customImageDim') as HTMLElement;
-const btnClearCustomImage = document.getElementById('btnClearCustomImage') as HTMLButtonElement;
-const inputSpriteSize = document.getElementById('inputSpriteSize') as HTMLInputElement;
-const valSpriteSize = document.getElementById('valSpriteSize') as HTMLElement;
-const inputSpriteSizeScatter = document.getElementById(
-  'inputSpriteSizeScatter'
-) as HTMLInputElement;
-const valSpriteSizeScatter = document.getElementById('valSpriteSizeScatter') as HTMLElement;
-const inputSpriteCount = document.getElementById('inputSpriteCount') as HTMLInputElement;
-const valSpriteCount = document.getElementById('valSpriteCount') as HTMLElement;
-const inputSpriteScatter = document.getElementById('inputSpriteScatter') as HTMLInputElement;
-const valSpriteScatter = document.getElementById('valSpriteScatter') as HTMLElement;
-const inputSpriteRotate = document.getElementById('inputSpriteRotate') as HTMLInputElement;
-const inputSpriteLineAngle = document.getElementById('inputSpriteLineAngle') as HTMLInputElement;
-const valSpriteLineAngle = document.getElementById('valSpriteLineAngle') as HTMLElement;
+const presetSpecificControls = document.getElementById('presetSpecificControls') as HTMLElement;
 
 const outputFormatInfo = document.getElementById('outputFormatInfo') as HTMLElement;
 const selectResolution = document.getElementById('selectResolution') as HTMLSelectElement;
@@ -139,10 +104,20 @@ let isExporting = false;
 // AnimationEngine の初期化
 const engine = new AnimationEngine(previewCanvas, currentPreset, currentOptions);
 
+// スキーマ駆動パラメータパネルの初期化
+const presetParamsPanel = new PresetParamsPanel(presetSpecificControls, {
+  onOptionChange: (key, value) => {
+    currentOptions[key] = value;
+    engine.updateOptions(currentOptions);
+  },
+  onToast: showToast,
+});
+
 // 画面読み込み時の初期UIセットアップ
 function init() {
   renderPresetCards();
   syncOptionsToUI();
+  presetParamsPanel.render(currentPreset.params, currentOptions);
   engine.init({
     onFrameUpdate: handleFrameUpdate,
     onPlayStateChange: handlePlayStateChange,
@@ -168,9 +143,6 @@ function renderPresetCards() {
     presetList.appendChild(card);
   }
   presetDescription.textContent = currentPreset.description;
-  hexSpecificControls.style.display = currentPresetId === 'hex' ? 'flex' : 'none';
-  lineWipeSpecificControls.style.display = currentPresetId === 'line-wipe' ? 'flex' : 'none';
-  spriteWipeSpecificControls.style.display = currentPresetId === 'sprite-wipe' ? 'flex' : 'none';
 }
 
 function selectPreset(presetId: string) {
@@ -183,6 +155,7 @@ function selectPreset(presetId: string) {
   engine.setPreset(preset, currentOptions);
   renderPresetCards();
   syncOptionsToUI();
+  presetParamsPanel.render(currentPreset.params, currentOptions);
   updateObsPanel();
 }
 
@@ -196,41 +169,13 @@ function syncOptionsToUI() {
   inputBorderWidth.value = String(currentOptions.borderWidth ?? 3);
   valBorderWidth.textContent = `${inputBorderWidth.value}px`;
 
-  inputHasGlow.checked = !!currentOptions.hasGlow;
+  const hasGlow = !!currentOptions.hasGlow;
+  inputHasGlow.checked = hasGlow;
+  glowBlurControlGroup.style.display = hasGlow ? 'flex' : 'none';
 
-  if (currentPresetId === 'hex') {
-    inputHexStagger.value = String(currentOptions.staggerDelay ?? 0.65);
-    valHexStagger.textContent = String(inputHexStagger.value);
-    inputHexRotation.checked = !!currentOptions.rotationEffect;
-  } else if (currentPresetId === 'line-wipe') {
-    inputLineWidth.value = String(currentOptions.bandWidth ?? 180);
-    valLineWidth.textContent = `${inputLineWidth.value}px`;
-    inputLineAngle.value = String(currentOptions.angleDeg ?? 28);
-    valLineAngle.textContent = `${inputLineAngle.value}°`;
-    inputLineSpeedLines.checked = currentOptions.speedLines !== false;
-  } else if (currentPresetId === 'sprite-wipe') {
-    selectSpriteType.value = currentOptions.spriteType ?? 'star';
-    customImageContainer.style.display = currentOptions.spriteType === 'custom' ? 'flex' : 'none';
-    inputSpriteSize.value = String(currentOptions.spriteSize ?? 96);
-    valSpriteSize.textContent = `${inputSpriteSize.value}px`;
-    const sizeScatterVal = currentOptions.sizeScatter ?? 0.4;
-    inputSpriteSizeScatter.value = String(sizeScatterVal);
-    valSpriteSizeScatter.textContent = `${Math.round(sizeScatterVal * 100)}%`;
-    inputSpriteCount.value = String(currentOptions.spriteCount ?? 16);
-    valSpriteCount.textContent = `${inputSpriteCount.value}個`;
-    inputSpriteScatter.value = String(currentOptions.spriteScatter ?? 36);
-    valSpriteScatter.textContent = `${inputSpriteScatter.value}px`;
-    inputSpriteRotate.checked = currentOptions.spriteRotate !== false;
-    inputSpriteLineAngle.value = String(currentOptions.angleDeg ?? 26);
-    valSpriteLineAngle.textContent = `${inputSpriteLineAngle.value}°`;
-
-    if (currentOptions.customImage) {
-      customImagePreviewWrapper.style.display = 'flex';
-      customImageThumb.src = currentOptions.customImage.src;
-    } else {
-      customImagePreviewWrapper.style.display = 'none';
-    }
-  }
+  const glowBlurVal = currentOptions.glowBlur ?? 15;
+  inputGlowBlur.value = String(glowBlurVal);
+  valGlowBlur.textContent = `${glowBlurVal}px`;
 }
 
 // フレーム更新イベント
@@ -301,56 +246,6 @@ function setBackgroundMode(mode: BackgroundMode) {
   previewCanvas.classList.toggle('side-by-side', mode === 'side_by_side');
   sceneSimControls.style.display = mode === 'scene_sim' ? 'flex' : 'none';
   updateCanvasResBadge();
-}
-
-// 画像ファイル読み込み共通ヘルパー
-function readImageFile(file: File, onLoad: (img: HTMLImageElement) => void) {
-  if (!file.type.startsWith('image/')) {
-    showToast('画像ファイル（PNG / JPEG / WebP / SVG 等）を選択してください');
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    const img = new Image();
-    img.onload = () => onLoad(img);
-    img.src = event.target?.result as string;
-  };
-  reader.readAsDataURL(file);
-}
-
-// ドラッグ＆ドロップ領域共通セットアップ
-function setupDropZone(element: HTMLElement, onFileDrop: (file: File) => void) {
-  let dragDepth = 0;
-
-  element.addEventListener('dragenter', (e) => {
-    e.preventDefault();
-    dragDepth++;
-    element.classList.add('drag-over');
-  });
-
-  element.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'copy';
-    }
-  });
-
-  element.addEventListener('dragleave', () => {
-    dragDepth = Math.max(0, dragDepth - 1);
-    if (dragDepth === 0) {
-      element.classList.remove('drag-over');
-    }
-  });
-
-  element.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dragDepth = 0;
-    element.classList.remove('drag-over');
-    const files = e.dataTransfer?.files;
-    if (files && files.length > 0) {
-      onFileDrop(files[0]);
-    }
-  });
 }
 
 // イベントリスナーのセットアップ
@@ -435,12 +330,18 @@ function setupEventListeners() {
     fileInput: HTMLInputElement
   ) => {
     const loadSceneFile = (file: File) => {
-      readImageFile(file, (img) => {
-        engine.setCustomSceneImage(scene, img);
-        fileNameEl.textContent = file.name;
-        clearBtn.style.display = 'inline-flex';
-        showToast(`Scene ${scene} に「${file.name}」を設定しました`);
-      });
+      readImageFile(
+        file,
+        (img) => {
+          engine.setCustomSceneImage(scene, img);
+          fileNameEl.textContent = file.name;
+          clearBtn.style.display = 'inline-flex';
+          showToast(`Scene ${scene} に「${file.name}」を設定しました`);
+        },
+        () => {
+          showToast('画像ファイル（PNG / JPEG / WebP / SVG 等）を選択してください');
+        }
+      );
     };
 
     uploadBtn.addEventListener('click', () => fileInput.click());
@@ -502,121 +403,14 @@ function setupEventListeners() {
 
   inputHasGlow.addEventListener('change', () => {
     currentOptions.hasGlow = inputHasGlow.checked;
+    glowBlurControlGroup.style.display = inputHasGlow.checked ? 'flex' : 'none';
     engine.updateOptions(currentOptions);
   });
 
-  // HEX 特有設定
-  inputHexStagger.addEventListener('input', () => {
-    const val = parseFloat(inputHexStagger.value);
-    valHexStagger.textContent = String(val);
-    currentOptions.staggerDelay = val;
-    engine.updateOptions(currentOptions);
-  });
-
-  inputHexRotation.addEventListener('change', () => {
-    currentOptions.rotationEffect = inputHexRotation.checked;
-    engine.updateOptions(currentOptions);
-  });
-
-  // LINE WIPE 特有設定
-  inputLineWidth.addEventListener('input', () => {
-    const val = parseInt(inputLineWidth.value, 10);
-    valLineWidth.textContent = `${val}px`;
-    currentOptions.bandWidth = val;
-    engine.updateOptions(currentOptions);
-  });
-
-  inputLineAngle.addEventListener('input', () => {
-    const val = parseInt(inputLineAngle.value, 10);
-    valLineAngle.textContent = `${val}°`;
-    currentOptions.angleDeg = val;
-    engine.updateOptions(currentOptions);
-  });
-
-  inputLineSpeedLines.addEventListener('change', () => {
-    currentOptions.speedLines = inputLineSpeedLines.checked;
-    engine.updateOptions(currentOptions);
-  });
-
-  // SPRITE WIPE (DECORATED LINE) 特有設定
-  selectSpriteType.addEventListener('change', () => {
-    currentOptions.spriteType = selectSpriteType.value;
-    customImageContainer.style.display = currentOptions.spriteType === 'custom' ? 'flex' : 'none';
-    engine.updateOptions(currentOptions);
-  });
-
-  btnUploadImageTrigger.addEventListener('click', () => {
-    inputSpriteCustomImage.click();
-  });
-
-  const loadCustomSpriteImage = (file: File) => {
-    readImageFile(file, (img) => {
-      currentOptions.customImage = img;
-      currentOptions.spriteType = 'custom';
-      selectSpriteType.value = 'custom';
-      customImageContainer.style.display = 'flex';
-      customImagePreviewWrapper.style.display = 'flex';
-      customImageThumb.src = img.src;
-      customImageName.textContent = file.name;
-      customImageDim.textContent = `${img.naturalWidth}×${img.naturalHeight}`;
-      engine.updateOptions(currentOptions);
-      showToast(`画像「${file.name}」を読み込みました`);
-    });
-  };
-
-  inputSpriteCustomImage.addEventListener('change', (e) => {
-    const files = (e.target as HTMLInputElement).files;
-    if (!files || files.length === 0) return;
-    loadCustomSpriteImage(files[0]);
-  });
-
-  setupDropZone(customImageContainer, loadCustomSpriteImage);
-
-  btnClearCustomImage.addEventListener('click', () => {
-    currentOptions.customImage = null;
-    inputSpriteCustomImage.value = '';
-    customImagePreviewWrapper.style.display = 'none';
-    engine.updateOptions(currentOptions);
-    showToast('カスタム画像を解除しました');
-  });
-
-  inputSpriteSize.addEventListener('input', () => {
-    const val = parseInt(inputSpriteSize.value, 10);
-    valSpriteSize.textContent = `${val}px`;
-    currentOptions.spriteSize = val;
-    engine.updateOptions(currentOptions);
-  });
-
-  inputSpriteSizeScatter.addEventListener('input', () => {
-    const val = parseFloat(inputSpriteSizeScatter.value);
-    valSpriteSizeScatter.textContent = `${Math.round(val * 100)}%`;
-    currentOptions.sizeScatter = val;
-    engine.updateOptions(currentOptions);
-  });
-
-  inputSpriteCount.addEventListener('input', () => {
-    const val = parseInt(inputSpriteCount.value, 10);
-    valSpriteCount.textContent = `${val}個`;
-    currentOptions.spriteCount = val;
-    engine.updateOptions(currentOptions);
-  });
-
-  inputSpriteScatter.addEventListener('input', () => {
-    const val = parseInt(inputSpriteScatter.value, 10);
-    valSpriteScatter.textContent = `${val}px`;
-    currentOptions.spriteScatter = val;
-    engine.updateOptions(currentOptions);
-  });
-
-  inputSpriteRotate.addEventListener('change', () => {
-    currentOptions.spriteRotate = inputSpriteRotate.checked;
-    engine.updateOptions(currentOptions);
-  });
-
-  inputSpriteLineAngle.addEventListener('input', () => {
-    const val = parseInt(inputSpriteLineAngle.value, 10);
-    valSpriteLineAngle.textContent = `${val}°`;
-    currentOptions.angleDeg = val;
+  inputGlowBlur.addEventListener('input', () => {
+    const val = parseInt(inputGlowBlur.value, 10);
+    valGlowBlur.textContent = `${val}px`;
+    currentOptions.glowBlur = val;
     engine.updateOptions(currentOptions);
   });
 

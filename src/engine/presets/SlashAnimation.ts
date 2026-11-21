@@ -1,4 +1,5 @@
 import { BasePresetOptions, PresetPlugin } from '../../types';
+import { easeInOutExpo } from '../utils/easing';
 
 export interface SlashPresetOptions extends BasePresetOptions {
   stripeCount: number;
@@ -15,7 +16,6 @@ export const defaultSlashOptions: SlashPresetOptions = {
   hasGlow: true,
   glowColor: '#ef4444',
   glowBlur: 20,
-  patternScale: 1.0,
   stripeCount: 6,
   angleDeg: 25,
   speedLines: true,
@@ -28,6 +28,31 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
   description:
     '鋭角なスラッシュストライプが画面を高速で走り抜け、全画面をロックして素早く飛び去るesports風スティンガー。',
   defaultOptions: defaultSlashOptions,
+  params: [
+    {
+      key: 'stripeCount',
+      type: 'range',
+      label: 'ストライプ本数',
+      min: 2,
+      max: 10,
+      step: 1,
+      unit: '本',
+    },
+    {
+      key: 'angleDeg',
+      type: 'range',
+      label: '傾き角度',
+      min: 10,
+      max: 45,
+      step: 1,
+      unit: '°',
+    },
+    {
+      key: 'speedLines',
+      type: 'boolean',
+      label: 'スピードライン',
+    },
+  ],
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
@@ -40,29 +65,8 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
     const fillEnd = 0.45;
     const holdEnd = 0.55;
 
-    const easeInOutExpo = (x: number): number => {
-      return x === 0
-        ? 0
-        : x === 1
-          ? 1
-          : x < 0.5
-            ? Math.pow(2, 20 * x - 10) / 2
-            : (2 - Math.pow(2, -20 * x + 10)) / 2;
-    };
-
     const count = options.stripeCount;
     const colors = [options.primaryColor, options.secondaryColor, options.accentColor];
-
-    // 背景の黒またはメインカバー
-    let coverProgress = 0;
-    if (progress < fillEnd) {
-      coverProgress = easeInOutExpo(progress / fillEnd);
-    } else if (progress <= holdEnd) {
-      coverProgress = 1.0;
-    } else {
-      const outP = (progress - holdEnd) / (1.0 - holdEnd);
-      coverProgress = 1.0 - easeInOutExpo(outP);
-    }
 
     // スラッシュ帯の描画
     ctx.save();
@@ -79,7 +83,7 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
     // 複数層のストライプを重ねて描画
     for (let i = 0; i < count; i++) {
       const layerDelay = (i / count) * 0.15;
-      let pLayer = 0;
+      let pLayer: number;
 
       if (progress < fillEnd) {
         const rawT = (progress - layerDelay) / (fillEnd - layerDelay);
@@ -150,10 +154,6 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
       ctx.fillRect(0, 0, width, height);
       return;
     }
-
-    const easeInOutExpo = (x: number): number => {
-      return x === 0 ? 0 : Math.pow(2, 20 * x - 10) / 2;
-    };
 
     const p = easeInOutExpo(Math.max(0, Math.min(1, progress / fillEnd)));
     const startX = -Math.abs(skewOffset) - 100;

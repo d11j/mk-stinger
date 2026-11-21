@@ -177,6 +177,8 @@ mk-stinger/
     ├── types.ts                 // 型定義（PresetPlugin, ExportConfig 等）
     ├── engine/
     │   ├── AnimationEngine.ts   // 決定論的レンダリングエンジン & 離散再生コントローラ
+    │   ├── utils/
+    │   │   └── easing.ts        // 共通イージング関数ユーティリティ
     │   └── presets/
     │       ├── index.ts         // プリセット一覧レジストリ
     │       ├── HexAnimation.ts  // 必須要件のHEXハニカム充填
@@ -185,6 +187,9 @@ mk-stinger/
     │       ├── HyperJumpAnimation.ts // ハイパージャンプ（収縮リング＋中心フラッシュ展開）
     │       ├── SlashAnimation.ts// 斜めスライス＆スピードライン
     │       └── GlitchAnimation.ts// サイバーグリッド
+    ├── ui/
+    │   ├── PresetParamsPanel.ts // params スキーマ駆動の動的UI生成コンポーネント
+    │   └── fileHelpers.ts       // 画像読み込み・ドラッグ＆ドロップ共通ヘルパー
     ├── renderer/
     │   └── TrackMatteRenderer.ts// Side-by-Side (3840x1080) マスク高速合成
     └── encoder/
@@ -211,6 +216,10 @@ mk-stinger/
      category: 'カスタム',
      description: '...',
      defaultOptions: { ... },
+     params: [
+       // スキーマ定義（左パネルの UI が自動生成される）
+       { key: 'myParam', type: 'range', label: 'パラメータ', min: 0, max: 100, step: 5, unit: 'px' },
+     ],
      render(ctx, progress, frameIndex, totalFrames, width, height, options) {
        // progress: 0.0 -> 1.0 に基づいて背景透過アニメーションを決定論的に描画
      },
@@ -220,7 +229,7 @@ mk-stinger/
    };
    ```
 2. **レジストリ登録**:
-   * `src/engine/presets/index.ts` の `ALL_PRESETS` 配列に追加するだけで、UIのカードや選択肢に自動反映されます。
+   * `src/engine/presets/index.ts` の `ALL_PRESETS` 配列に追加するだけで、UIのカードや固有パラメータ設定UIに自動反映されます。`index.html` や `src/main.ts` の編集は不要です。
 
 ---
 

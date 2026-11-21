@@ -14,14 +14,13 @@ export const defaultGlitchOptions: GlitchPresetOptions = {
   hasGlow: true,
   glowColor: '#39d353',
   glowBlur: 12,
-  patternScale: 1.0,
   blockSize: 48,
   noiseAmount: 0.3,
 };
 
 // 疑似乱数 (決定論的描画のためにシード固定PRNG)
 function seededRandom(seed: number) {
-  const x = Math.sin(seed++) * 10000;
+  const x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
 }
 
@@ -32,6 +31,26 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
   description:
     '左からデジタルグリッドボクセルが波状に展開し、全画面をデータロックして崩壊消滅するサイバーパンクスティンガー。ギッハブの草。',
   defaultOptions: defaultGlitchOptions,
+  params: [
+    {
+      key: 'blockSize',
+      type: 'range',
+      label: 'ブロックサイズ',
+      min: 24,
+      max: 96,
+      step: 8,
+      unit: 'px',
+    },
+    {
+      key: 'noiseAmount',
+      type: 'range',
+      label: 'ノイズばらつき',
+      min: 0,
+      max: 0.5,
+      step: 0.05,
+      format: 'percent',
+    },
+  ],
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
@@ -42,6 +61,7 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
 
     const fillEnd = 0.46;
     const holdEnd = 0.54;
+    const noise = Math.max(0, options.noiseAmount ?? 0);
 
     const colors = [options.primaryColor, options.secondaryColor, options.accentColor];
 
@@ -52,8 +72,8 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
 
         // 決定論的シード
         const cellIndex = c + r * cols;
-        const jitter = (seededRandom(cellIndex * 7.31) - 0.5) * 0.2;
-        const normDist = (c / cols) * 0.8 + (r / rows) * 0.2 + jitter;
+        const jitter = (seededRandom(cellIndex * 7.31) - 0.5) * noise;
+        const normDist = Math.max(0.001, (c / cols) * 0.8 + (r / rows) * 0.2 + jitter);
 
         let active = false;
         let scale = 1.0;
@@ -117,6 +137,7 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
     const cols = Math.ceil(width / bSize);
     const rows = Math.ceil(height / bSize);
     const fillEnd = 0.46;
+    const noise = Math.max(0, options.noiseAmount ?? 0);
 
     if (progress >= fillEnd) {
       // 完全に覆った後は全面白 (Scene B)
@@ -133,8 +154,8 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
         const y = r * bSize;
 
         const cellIndex = c + r * cols;
-        const jitter = (seededRandom(cellIndex * 7.31) - 0.5) * 0.2;
-        const normDist = (c / cols) * 0.8 + (r / rows) * 0.2 + jitter;
+        const jitter = (seededRandom(cellIndex * 7.31) - 0.5) * noise;
+        const normDist = Math.max(0.001, (c / cols) * 0.8 + (r / rows) * 0.2 + jitter);
 
         const t = progress / fillEnd;
         if (t >= normDist) {
