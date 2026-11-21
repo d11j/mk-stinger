@@ -117,7 +117,10 @@ let currentPresetId = 'hex';
 let currentPreset = PRESET_MAP.get(currentPresetId)!;
 let currentOptions = { ...currentPreset.defaultOptions };
 
+const DEFAULT_EXPORT_DETAILS_TEXT = 'WebCodecs API により、ブラウザ上で直接高速エンコードを実行しています。';
+
 let exportPipeline: VideoExportPipeline | null = null;
+let isExporting = false;
 
 // AnimationEngine の初期化
 const engine = new AnimationEngine(
@@ -677,7 +680,10 @@ function setupEventListeners() {
   btnCancelExport.addEventListener('click', () => {
     if (exportPipeline) {
       exportPipeline.cancel();
+      exportPipeline = null;
     }
+    isExporting = false;
+    btnStartExport.disabled = false;
     hideExportModal();
   });
 
@@ -752,8 +758,13 @@ function showToast(message: string) {
 // エクスポートモーダルの表示・非表示
 function showExportModal() {
   exportModal.classList.add('show');
+  exportStatusText.textContent = 'レンダリング準備中...';
   exportProgressBar.style.width = '0%';
+  exportProgressBar.style.background = '';
+  exportProgressBar.style.backgroundColor = '';
   exportPercentText.textContent = '0%';
+  exportDetailsBox.textContent = DEFAULT_EXPORT_DETAILS_TEXT;
+  exportDetailsBox.style.display = '';
   exportResultArea.style.display = 'none';
   btnDownloadExport.style.display = 'none';
   btnCancelExport.textContent = 'キャンセル';
@@ -769,6 +780,13 @@ function hideExportModal() {
 
 // エクスポートのメイン実行
 async function startExport() {
+  if (isExporting) {
+    return;
+  }
+
+  isExporting = true;
+  btnStartExport.disabled = true;
+
   engine.pause();
   engine.flushPendingAnalysis();
   showExportModal();
@@ -789,20 +807,28 @@ async function startExport() {
     bitrateMbps,
   };
 
-  exportPipeline = new VideoExportPipeline();
+  const pipeline = new VideoExportPipeline();
+  exportPipeline = pipeline;
 
   try {
-    const result = await exportPipeline.exportVideo(
+    const result = await pipeline.exportVideo(
       currentPreset,
       currentOptions,
       exportConfig,
       (ev) => {
+        if (exportPipeline !== pipeline) {
+          return;
+        }
         exportStatusText.textContent = ev.statusMessage;
         exportPercentText.textContent = `${ev.progressPercent}%`;
         exportProgressBar.style.width = `${ev.progressPercent}%`;
       },
       engine.getEffectiveCutFrame()
     );
+
+    if (exportPipeline !== pipeline) {
+      return;
+    }
 
     // 成功処理
     exportStatusText.textContent = '書き出し完了！';
@@ -831,10 +857,19 @@ async function startExport() {
       origin: { y: 0.6 },
     });
   } catch (err: any) {
+    if (exportPipeline !== pipeline) {
+      return;
+    }
     exportStatusText.textContent = 'エラーが発生しました';
     exportDetailsBox.textContent = `エラー: ${err.message || err}`;
     exportDetailsBox.style.display = 'block';
-    exportProgressBar.style.backgroundColor = '#ef4444';
+    exportProgressBar.style.background = '#ef4444';
+  } finally {
+    if (exportPipeline === pipeline) {
+      exportPipeline = null;
+      isExporting = false;
+      btnStartExport.disabled = false;
+    }
   }
 }
 
