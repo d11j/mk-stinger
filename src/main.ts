@@ -14,8 +14,22 @@ const btnStepPrev = document.getElementById('btnStepPrev') as HTMLButtonElement;
 const btnTogglePlay = document.getElementById('btnTogglePlay') as HTMLButtonElement;
 const btnStepNext = document.getElementById('btnStepNext') as HTMLButtonElement;
 const btnToEnd = document.getElementById('btnToEnd') as HTMLButtonElement;
+const btnToggleLoop = document.getElementById('btnToggleLoop') as HTMLButtonElement;
+const btnOneShotTest = document.getElementById('btnOneShotTest') as HTMLButtonElement;
 const iconPlay = document.getElementById('iconPlay') as HTMLElement;
 const iconPause = document.getElementById('iconPause') as HTMLElement;
+
+const sceneSimControls = document.getElementById('sceneSimControls') as HTMLElement;
+const sceneASlot = document.getElementById('sceneASlot') as HTMLElement;
+const sceneBSlot = document.getElementById('sceneBSlot') as HTMLElement;
+const sceneAFileName = document.getElementById('sceneAFileName') as HTMLElement;
+const sceneBFileName = document.getElementById('sceneBFileName') as HTMLElement;
+const btnUploadSceneA = document.getElementById('btnUploadSceneA') as HTMLButtonElement;
+const btnUploadSceneB = document.getElementById('btnUploadSceneB') as HTMLButtonElement;
+const btnClearSceneA = document.getElementById('btnClearSceneA') as HTMLButtonElement;
+const btnClearSceneB = document.getElementById('btnClearSceneB') as HTMLButtonElement;
+const inputSceneAImage = document.getElementById('inputSceneAImage') as HTMLInputElement;
+const inputSceneBImage = document.getElementById('inputSceneBImage') as HTMLInputElement;
 
 const lblCurrentTime = document.getElementById('lblCurrentTime') as HTMLElement;
 const lblTotalTime = document.getElementById('lblTotalTime') as HTMLElement;
@@ -262,6 +276,78 @@ function updateObsPanel() {
   obsOutputResolution.textContent = `${outputWidth}×${outputHeight} (横並び)`;
 }
 
+// 解像度バッジ更新
+function updateCanvasResBadge() {
+  const resKey = selectResolution.value as ResolutionPreset;
+  const res = RESOLUTIONS[resKey];
+  if (engine.getBackgroundMode() === 'side_by_side') {
+    canvasResBadge.textContent = `${res.width * 2}×${res.height} (32:9)`;
+  } else {
+    canvasResBadge.textContent = `${res.width}×${res.height}`;
+  }
+}
+
+// 背景モード切り替え
+function setBackgroundMode(mode: BackgroundMode) {
+  document.querySelectorAll<HTMLButtonElement>('.bg-btn').forEach((b) => {
+    b.classList.toggle('active', b.getAttribute('data-bg') === mode);
+  });
+  engine.setBackgroundMode(mode);
+  previewCanvas.classList.toggle('side-by-side', mode === 'side_by_side');
+  sceneSimControls.style.display = mode === 'scene_sim' ? 'flex' : 'none';
+  updateCanvasResBadge();
+}
+
+// 画像ファイル読み込み共通ヘルパー
+function readImageFile(file: File, onLoad: (img: HTMLImageElement) => void) {
+  if (!file.type.startsWith('image/')) {
+    showToast('画像ファイル（PNG / JPEG / WebP / SVG 等）を選択してください');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = () => onLoad(img);
+    img.src = event.target?.result as string;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ドラッグ＆ドロップ領域共通セットアップ
+function setupDropZone(element: HTMLElement, onFileDrop: (file: File) => void) {
+  let dragDepth = 0;
+
+  element.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    dragDepth++;
+    element.classList.add('drag-over');
+  });
+
+  element.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  });
+
+  element.addEventListener('dragleave', () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) {
+      element.classList.remove('drag-over');
+    }
+  });
+
+  element.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragDepth = 0;
+    element.classList.remove('drag-over');
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      onFileDrop(files[0]);
+    }
+  });
+}
+
 // イベントリスナーのセットアップ
 function setupEventListeners() {
   // 再生系ボタン
@@ -281,6 +367,20 @@ function setupEventListeners() {
   btnStepNext.addEventListener('click', () => {
     engine.pause();
     engine.stepFrame(1);
+  });
+
+  btnToggleLoop.addEventListener('click', () => {
+    const nextLoop = !engine.getIsLooping();
+    engine.setLooping(nextLoop);
+    btnToggleLoop.classList.toggle('active', nextLoop);
+    btnToggleLoop.setAttribute('aria-pressed', String(nextLoop));
+  });
+
+  btnOneShotTest.addEventListener('click', () => {
+    if (engine.getBackgroundMode() !== 'scene_sim') {
+      setBackgroundMode('scene_sim');
+    }
+    engine.playOneShot();
   });
 
   // シークバーのクリック & ドラッグ
@@ -310,12 +410,62 @@ function setupEventListeners() {
   // 背景モード切り替え
   document.querySelectorAll<HTMLButtonElement>('.bg-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.bg-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
       const mode = btn.getAttribute('data-bg') as BackgroundMode;
-      engine.setBackgroundMode(mode);
+      setBackgroundMode(mode);
     });
   });
+
+  // 配信切替テスト用 カスタムシーン画像設定
+  const setupSceneImageSlot = (
+    scene: 'A' | 'B',
+    slotEl: HTMLElement,
+    fileNameEl: HTMLElement,
+    uploadBtn: HTMLButtonElement,
+    clearBtn: HTMLButtonElement,
+    fileInput: HTMLInputElement
+  ) => {
+    const loadSceneFile = (file: File) => {
+      readImageFile(file, (img) => {
+        engine.setCustomSceneImage(scene, img);
+        fileNameEl.textContent = file.name;
+        clearBtn.style.display = 'inline-flex';
+        showToast(`Scene ${scene} に「${file.name}」を設定しました`);
+      });
+    };
+
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (files && files.length > 0) {
+        loadSceneFile(files[0]);
+      }
+    });
+    clearBtn.addEventListener('click', () => {
+      engine.setCustomSceneImage(scene, null);
+      fileInput.value = '';
+      fileNameEl.textContent = 'デフォルト';
+      clearBtn.style.display = 'none';
+      showToast(`Scene ${scene} をデフォルトに戻しました`);
+    });
+    setupDropZone(slotEl, loadSceneFile);
+  };
+
+  setupSceneImageSlot(
+    'A',
+    sceneASlot,
+    sceneAFileName,
+    btnUploadSceneA,
+    btnClearSceneA,
+    inputSceneAImage
+  );
+  setupSceneImageSlot(
+    'B',
+    sceneBSlot,
+    sceneBFileName,
+    btnUploadSceneB,
+    btnClearSceneB,
+    inputSceneBImage
+  );
 
   // カラーピッカー変更
   const updateColors = () => {
@@ -389,30 +539,28 @@ function setupEventListeners() {
     inputSpriteCustomImage.click();
   });
 
+  const loadCustomSpriteImage = (file: File) => {
+    readImageFile(file, (img) => {
+      currentOptions.customImage = img;
+      currentOptions.spriteType = 'custom';
+      selectSpriteType.value = 'custom';
+      customImageContainer.style.display = 'flex';
+      customImagePreviewWrapper.style.display = 'flex';
+      customImageThumb.src = img.src;
+      customImageName.textContent = file.name;
+      customImageDim.textContent = `${img.naturalWidth}×${img.naturalHeight}`;
+      engine.updateOptions(currentOptions);
+      showToast(`画像「${file.name}」を読み込みました`);
+    });
+  };
+
   inputSpriteCustomImage.addEventListener('change', (e) => {
     const files = (e.target as HTMLInputElement).files;
     if (!files || files.length === 0) return;
-    const file = files[0];
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        currentOptions.customImage = img;
-        currentOptions.spriteType = 'custom';
-        selectSpriteType.value = 'custom';
-        customImageContainer.style.display = 'flex';
-        customImagePreviewWrapper.style.display = 'flex';
-        customImageThumb.src = img.src;
-        customImageName.textContent = file.name;
-        customImageDim.textContent = `${img.naturalWidth}×${img.naturalHeight}`;
-        engine.updateOptions(currentOptions);
-        showToast(`画像「${file.name}」を読み込みました`);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+    loadCustomSpriteImage(files[0]);
   });
+
+  setupDropZone(customImageContainer, loadCustomSpriteImage);
 
   btnClearCustomImage.addEventListener('click', () => {
     currentOptions.customImage = null;
@@ -466,8 +614,8 @@ function setupEventListeners() {
   selectResolution.addEventListener('change', () => {
     const resKey = selectResolution.value as ResolutionPreset;
     const res = RESOLUTIONS[resKey];
-    canvasResBadge.textContent = `${res.width}×${res.height}`;
     engine.resize(res.width, res.height);
+    updateCanvasResBadge();
     updateObsPanel();
   });
 
