@@ -1,11 +1,9 @@
-import { PresetPlugin, TransitionAnalysis } from '../types';
-import { TransitionAnalyzer } from './TransitionAnalyzer';
+import { PresetPlugin } from '../types';
 
 export type BackgroundMode = 'checkerboard' | 'black' | 'green' | 'scene_sim';
 
 export interface EngineEvents {
   onFrameUpdate?: (frame: number, progress: number, totalFrames: number, fps: number) => void;
-  onAnalysisUpdate?: (analysis: TransitionAnalysis) => void;
   onPlayStateChange?: (isPlaying: boolean) => void;
 }
 
@@ -15,8 +13,6 @@ export class AnimationEngine {
 
   private bufferCanvas: OffscreenCanvas;
   private bufferCtx: OffscreenCanvasRenderingContext2D;
-
-  private analyzer: TransitionAnalyzer;
 
   // 内部状態
   private currentPreset: PresetPlugin<any>;
@@ -31,23 +27,10 @@ export class AnimationEngine {
   private playTimerId: number | null = null;
   private backgroundMode: BackgroundMode = 'checkerboard';
 
-  private transitionAnalysis: TransitionAnalysis | null = null;
-  private manualCutFrame: number | null = null;
-
   private events: EngineEvents = {};
   private isInitialized: boolean = false;
 
-  // 色変更など不透明度・カットポイントに影響を与えないプロパティの判定用
-  private static readonly COLOR_ONLY_KEYS = new Set([
-    'primaryColor',
-    'secondaryColor',
-    'accentColor',
-    'borderColor',
-    'glowColor',
-  ]);
-
   private renderRafId: number | null = null;
-  private recalculateTimerId: number | null = null;
 
   // 疑似配信画面用のパターンキャンバス
   private sceneACanvas: OffscreenCanvas | null = null;
@@ -74,27 +57,14 @@ export class AnimationEngine {
     this.bufferCanvas = new OffscreenCanvas(width, height);
     this.bufferCtx = this.bufferCanvas.getContext('2d', { alpha: true })!;
 
-    this.analyzer = new TransitionAnalyzer(width, height);
     this.updateTotalFrames();
     this.createSimScenes(width, height);
-
-    this.transitionAnalysis = this.analyzer.analyze(
-      this.currentPreset,
-      this.currentOptions,
-      this.totalFrames,
-      this.fps,
-      width,
-      height
-    );
     this.renderCurrentFrame();
   }
 
   public init(events: EngineEvents = {}) {
     this.events = events;
     this.isInitialized = true;
-    if (this.events.onAnalysisUpdate && this.transitionAnalysis) {
-      this.events.onAnalysisUpdate(this.transitionAnalysis);
-    }
     if (this.events.onFrameUpdate) {
       this.events.onFrameUpdate(this.currentFrame, 0, this.totalFrames, this.fps);
     }
@@ -111,63 +81,36 @@ export class AnimationEngine {
     this.bufferCanvas.width = width;
     this.bufferCanvas.height = height;
     this.createSimScenes(width, height);
-    this.recalculateTransition();
     this.renderCurrentFrame();
   }
 
-  public setConfig(fps: 30 | 60, durationSec: number, immediateAnalysis: boolean = false) {
+  public setConfig(fps: 30 | 60, durationSec: number) {
     const changed = this.fps !== fps || this.durationSec !== durationSec;
     this.fps = fps;
     this.durationSec = durationSec;
     if (changed) {
       this.updateTotalFrames();
-      if (immediateAnalysis) {
-        this.flushPendingAnalysis();
-        this.recalculateTransition();
-      } else {
-        this.scheduleRecalculateTransition(150);
-      }
       this.requestRender();
     }
   }
 
   public setPreset(preset: PresetPlugin<any>, options?: any) {
-    this.flushPendingAnalysis();
     this.currentPreset = preset;
     this.currentOptions = options ? { ...options } : { ...preset.defaultOptions };
-    this.recalculateTransition();
     this.renderCurrentFrame();
   }
 
   /**
-   * オプション更新
-   * 色のみの変更であれば、重い全フレームカバレッジ解析 (recalculateTransition) をスキップして即時再描画。
-   * 形状やタイミングの変更時は、スライダー操作中の負荷を抑えるためデバウンスして解析を実行。
+   * オプション更新（プレビュー表示を rAF 経由で即時更新）
    */
-  public updateOptions(options: any, immediateAnalysis: boolean = false) {
+  public updateOptions(options: any) {
     const changedKeys = Object.keys(options).filter(
       (k) => this.currentOptions[k] !== options[k]
     );
     if (changedKeys.length === 0) return;
 
     this.currentOptions = { ...this.currentOptions, ...options };
-
-    // プレビュー表示を即座に（rAF経由で）更新
     this.requestRender();
-
-    // 変更されたキーが全て色プロパティであれば、カバレッジ解析は完全に不要なのでスキップ
-    const isColorOnly = changedKeys.every((k) => AnimationEngine.COLOR_ONLY_KEYS.has(k));
-    if (isColorOnly) {
-      return;
-    }
-
-    // 幾何学・タイミング等、不透明度やカットポイントに影響する変更の場合
-    if (immediateAnalysis) {
-      this.flushPendingAnalysis();
-      this.recalculateTransition();
-    } else {
-      this.scheduleRecalculateTransition(150);
-    }
   }
 
   public setBackgroundMode(mode: BackgroundMode) {
@@ -177,27 +120,6 @@ export class AnimationEngine {
 
   public getBackgroundMode(): BackgroundMode {
     return this.backgroundMode;
-  }
-
-  public setManualCutFrame(frame: number | null) {
-    this.manualCutFrame = frame;
-    this.renderCurrentFrame();
-  }
-
-  public getEffectiveCutFrame(): number {
-    if (this.manualCutFrame !== null) {
-      return this.manualCutFrame;
-    }
-    return this.transitionAnalysis?.transitionFrame ?? Math.floor(this.totalFrames / 2);
-  }
-
-  public getEffectiveCutMs(): number {
-    const frame = this.getEffectiveCutFrame();
-    return Math.round((frame / this.fps) * 1000);
-  }
-
-  public getTransitionAnalysis(): TransitionAnalysis | null {
-    return this.transitionAnalysis;
   }
 
   public getPreset() {
@@ -246,50 +168,6 @@ export class AnimationEngine {
       this.renderRafId = null;
       this.renderCurrentFrame();
     });
-  }
-
-  /**
-   * カバレッジ解析のデバウンス実行
-   */
-  public scheduleRecalculateTransition(delayMs: number = 150) {
-    if (this.recalculateTimerId !== null) {
-      clearTimeout(this.recalculateTimerId);
-    }
-    this.recalculateTimerId = window.setTimeout(() => {
-      this.recalculateTimerId = null;
-      this.recalculateTransition();
-    }, delayMs);
-  }
-
-  /**
-   * 保留中のデバウンス解析があれば即時実行して確定
-   */
-  public flushPendingAnalysis() {
-    if (this.recalculateTimerId !== null) {
-      clearTimeout(this.recalculateTimerId);
-      this.recalculateTimerId = null;
-      this.recalculateTransition();
-    }
-  }
-
-  public recalculateTransition() {
-    if (this.recalculateTimerId !== null) {
-      clearTimeout(this.recalculateTimerId);
-      this.recalculateTimerId = null;
-    }
-    const w = this.displayCanvas.width;
-    const h = this.displayCanvas.height;
-    this.transitionAnalysis = this.analyzer.analyze(
-      this.currentPreset,
-      this.currentOptions,
-      this.totalFrames,
-      this.fps,
-      w,
-      h
-    );
-    if (this.events.onAnalysisUpdate) {
-      this.events.onAnalysisUpdate(this.transitionAnalysis);
-    }
   }
 
   // --- 決定論的再生制御 ---
@@ -419,29 +297,19 @@ export class AnimationEngine {
       if (this.sceneBCanvas && this.simMaskCanvas && this.simBlendCanvas) {
         const maskCtx = this.simMaskCanvas.getContext('2d')!;
         const blendCtx = this.simBlendCanvas.getContext('2d')!;
-        const cutFrame = this.getEffectiveCutFrame();
         const progress = this.totalFrames > 1 ? this.currentFrame / (this.totalFrames - 1) : 0;
 
         // マスクキャンバスを透明クリアし、Scene B になる領域を白で描画
         maskCtx.clearRect(0, 0, w, h);
-        if (typeof this.currentPreset.renderMatte === 'function') {
-          this.currentPreset.renderMatte(
-            maskCtx,
-            progress,
-            this.currentFrame,
-            this.totalFrames,
-            w,
-            h,
-            this.currentOptions,
-            cutFrame
-          );
-        } else {
-          // デフォルト: cutFrame 以降は白
-          if (this.currentFrame >= cutFrame) {
-            maskCtx.fillStyle = '#ffffff';
-            maskCtx.fillRect(0, 0, w, h);
-          }
-        }
+        this.currentPreset.renderMatte(
+          maskCtx,
+          progress,
+          this.currentFrame,
+          this.totalFrames,
+          w,
+          h,
+          this.currentOptions
+        );
 
         // Scene B を一時キャンバスに描き、マスクで切り抜き
         blendCtx.clearRect(0, 0, w, h);

@@ -25,15 +25,7 @@
   * $progress \in [0.0, 1.0]$ を厳密に計算し、離散フレームごとに状態を一意に決定。
   * プレビュー再生時も、フレームインデックスを加算する離散ステップタイマーで動作させ、描画落ちやフレーム間隔のブレを排除。
 
-### 2.2. トランジションポイント（カットポイント）自動算出
-* **アルゴリズム** (`src/engine/TransitionAnalyzer.ts`):
-  1. 描画結果を 16:9 の縮小バッファ（64×36 ピクセル）へ `drawImage` 転写。
-  2. `getImageData` でピクセル走査し、全ピクセルのアルファ値が $\ge 253$（完全不透明）となるフレーム区間 `[startFrame, endFrame]` を探索。
-  3. ピークフレームを `transitionFrame = Math.floor((startFrame + endFrame) / 2)` として決定。
-  4. ミリ秒変換: `transitionMs = Math.round((transitionFrame / fps) * 1000)`。
-  5. UI のシークバー背景に不透明度波形（カバレッジグラフ）を描画し、視覚的な確認を可能にする。
-
-### 2.3. トラックマットレイアウト (Side-by-Side: 3840×1080) の真の仕様
+### 2.2. トラックマットレイアウト (Side-by-Side: 3840×1080) の真の仕様
 OBS のトラックマット仕様に準拠：
 * **解像度**: 横幅が2倍（1080p出力時は **3840×1080**、720p出力時は **2560×720**）
 * **左半分 (0〜1919px)**: **アニメーション実映像（背景透過・アルファチャンネル保持）**
@@ -44,21 +36,20 @@ OBS のトラックマット仕様に準拠：
   * **黒（#000000）**: 移行前シーン（**From Scene / Scene A**）を表示
   * **白（#ffffff）**: 移行後シーン（**To Scene / Scene B**）を表示
   * **グレー（中間調）**: Scene A と Scene B のクロスフェード・半透明ブレンド
-  * ※ アニメーション開始時は **全面黒** で、スティンガーの進行（またはカットポイント）を経て、アニメーション終了時には **全面白** にならなければならない。
-* **実装方式 (`TrackMatteRenderer.ts` & `PresetPlugin.renderMatte`)**:
+  * ※ アニメーション開始時は **全面黒** で、スティンガーの進行を経て、アニメーション終了時には **全面白** にならなければならない。
+* **実装方式 (`TrackMatteRenderer.ts` & 必須 `PresetPlugin.renderMatte`)**:
   * `TrackMatteRenderer`: `outputCanvas` を `alpha: true` にし、合成前に `clearRect` で全体を透明初期化。
   * 左半分にアニメーションを背景透過のまま描画し、右半分に不透明な黒/白マスクを描画。
-  * 各プリセットに `renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options, cutFrame)` を実装。
-  * 六角形（HEX）が左から充填されていく波に合わせて、通過したセルを白（Scene B）で塗り広げる。
-  * 完全充填後は全面白（#ffffff）を維持し、六角形が縮小消滅した際、背後から新しいシーン（Scene B）が綺麗に露出する。
+  * 全プリセットに `renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options)` の実装を必須化。
+  * 六角形（HEX）が左から充填されていく波や斜めラインの通過に合わせて、通過領域を白（Scene B）で塗り広げる。
   * プレビューの「配信切替テスト」でも、このマスクキャンバスを `destination-in` 合成することで、OBS と 100% 同一のシーン切り替えをブラウザ上で完全シミュレート。
+  * マスクのみでシーン切り替えが完結するため、移行ポイント（カットポイント）の自動算出や手動調整は廃止済み。
 
-### 2.4. ファイル命名規則（移行ポイント埋め込み親切設計）
-* **形式**: `stinger_{presetId}_{resolutionKey}_{fps}fps_{cutFrame}f.webm`
-  * 例: `stinger_hex_1080p_60fps_66f.webm`
-* **メリット**:
-  * OBS Studio でスティンガー設定を行う際、ユーザーが「何フレームで切り替えればいいか？」を一目で確認・入力できる。
-  * UI の「OBS Studio 設定パラメータ」カードやクリップボードコピー機能とも完全に連携。
+### 2.3. ファイル命名規則
+* **形式**: `stinger_{presetId}_{resolutionKey}_{fps}fps.webm`
+  * 例: `stinger_hex_1080p_60fps.webm`
+* **特徴**:
+  * トラックマット専用化により移行ポイントのフレーム数入力が不要となったため、プリセット・解像度・FPS が一目で分かるシンプルな命名に統一。
 
 ---
 
@@ -162,20 +153,11 @@ OBS のトラックマット仕様に準拠：
 
 ---
 
-### 🚨 8. 色・設定変更時の全フレーム同期解析によるUI極大ラグと最適化
-* **発生した現象**:
-  * カラーピッカーで色を変更したりスライダーを動かした際、UIが極端に重くなりフリーズする。
-* **原因**:
-  * `updateOptions()` 内で、設定が変更されるたびに `recalculateTransition()`（全フレーム＝例えば60fps×2秒なら120フレームの描画＋ピクセル走査）がメインスレッドで同期実行されていた。
-  * カラーピッカーのドラッグやスライダー操作では1秒間に数十回〜数百回の `input` イベントが発生するため、数千フレーム分のキャンバス描画とピクセル走査が重なりUIがブロックされていた。
-* **解決策**:
-  1. **色プロパティのスキップ判定**:
-     * `primaryColor` や `borderColor` などの色は、物体の幾何学形状やアルファカバレッジ（不透明度・カットポイント）に一切影響しない。
-     * 色のみの変更時は `recalculateTransition()` を完全にスキップし、現在の1フレームのみ再描画することで処理負荷を 99.9% 削減。
-  2. **ジオメトリ・スライダーのデバウンス解析**:
-     * 形状やタイミングに関わるスライダー操作（`staggerDelay` 等）の際は、プレビュー画面は即時反映しつつ、重い全フレーム解析はデバウンス（150ms）して操作停止時に1回だけ実行する。
-  3. **`requestAnimationFrame` によるプレビュー描画のスロットリング**:
-     * `renderCurrentFrame()` を rAF で束ね、高頻度イベントでも1フレーム（16.6ms）あたり最大1回の描画に抑制。
+### 🚨 8. 高頻度 UI 操作時のプレビュー再描画スロットリング
+* **背景**:
+  * かつて存在した全フレーム同期解析（`TransitionAnalyzer`）はトラックマット専用化に伴い廃止されたため、設定変更時のメインスレッド負荷は大幅に解消された。
+* **現行の最適化**:
+  * `AnimationEngine.requestRender()` で `requestAnimationFrame` によるスロットリングを行い、カラーピッカーやスライダーの高頻度 `input` イベントでも 1 フレーム（16.6ms）あたり最大 1 回の再描画に抑制している。
 
 ---
 
@@ -192,22 +174,21 @@ mk-stinger/
 └── src/
     ├── main.ts                  // UIコントローラ、イベントバインド、エクスポート実行
     ├── style.css                // Cyber/OBS風ダークテーマデザインシステム
-    ├── types.ts                 // 型定義（PresetPlugin, ExportConfig, TransitionAnalysis 等）
+    ├── types.ts                 // 型定義（PresetPlugin, ExportConfig 等）
     ├── engine/
     │   ├── AnimationEngine.ts   // 決定論的レンダリングエンジン & 離散再生コントローラ
-    │   ├── TransitionAnalyzer.ts// トランジションポイント・カバレッジ自動解析
     │   └── presets/
     │       ├── index.ts         // プリセット一覧レジストリ
     │       ├── HexAnimation.ts  // 必須要件のHEXハニカム充填
     │       ├── LineWipeAnimation.ts // 斜めラインワイプ（トラックマット特化・非全面被覆型）
     │       ├── SpriteWipeAnimation.ts // デコレーションラインワイプ（1本線＋星/ハート/画像スプライト装飾）
+    │       ├── HyperJumpAnimation.ts // ハイパージャンプ（収縮リング＋中心フラッシュ展開）
     │       ├── SlashAnimation.ts// 斜めスライス＆スピードライン
-    │       ├── IrisAnimation.ts // メカニカルサークルアイリス
     │       └── GlitchAnimation.ts// サイバーグリッド
     ├── renderer/
     │   └── TrackMatteRenderer.ts// Side-by-Side (3840x1080) マスク高速合成
     └── encoder/
-        └── VideoExportPipeline.ts// WebCodecs + Muxer 最適コーデック解決＆書き出し
+        └── VideoExportPipeline.ts// WebCodecs + mediabunny によるトラックマット WebM 書き出し
 ```
 
 ---
@@ -231,8 +212,10 @@ mk-stinger/
      description: '...',
      defaultOptions: { ... },
      render(ctx, progress, frameIndex, totalFrames, width, height, options) {
-       // progress: 0.0 -> 1.0 に基づいて決定論的に描画
-       // ※ progress 0.46〜0.54 付近で全画面を完全不透明で覆うこと
+       // progress: 0.0 -> 1.0 に基づいて背景透過アニメーションを決定論的に描画
+     },
+     renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
+       // progress: 0.0 (全面黒 = Scene A) -> 1.0 (全面白 = Scene B) の遷移マスクを描画
      }
    };
    ```

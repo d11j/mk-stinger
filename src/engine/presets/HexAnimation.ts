@@ -249,7 +249,7 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
     }
   },
 
-  renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options, cutFrame) {
+  renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
     // トラックマットマスク: 白 (#ffffff) で Scene B 領域を塗る
     const fillEndProgress = 0.46;
 

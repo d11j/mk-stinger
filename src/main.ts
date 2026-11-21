@@ -1,15 +1,13 @@
 import confetti from 'canvas-confetti';
 import { ALL_PRESETS, PRESET_MAP } from './engine/presets';
 import { AnimationEngine, BackgroundMode } from './engine/AnimationEngine';
-import { ExportConfig, RESOLUTIONS, ResolutionPreset, TransitionAnalysis } from './types';
+import { ExportConfig, RESOLUTIONS, ResolutionPreset } from './types';
 import { VideoExportPipeline } from './encoder/VideoExportPipeline';
 
 // DOM 要素の取得
 const previewCanvas = document.getElementById('previewCanvas') as HTMLCanvasElement;
-const coverageCanvas = document.getElementById('coverageCanvas') as HTMLCanvasElement;
 const scrubberTrack = document.getElementById('scrubberTrack') as HTMLDivElement;
 const scrubberProgress = document.getElementById('scrubberProgress') as HTMLDivElement;
-const cutpointMarker = document.getElementById('cutpointMarker') as HTMLDivElement;
 
 const btnToStart = document.getElementById('btnToStart') as HTMLButtonElement;
 const btnStepPrev = document.getElementById('btnStepPrev') as HTMLButtonElement;
@@ -22,7 +20,6 @@ const iconPause = document.getElementById('iconPause') as HTMLElement;
 const lblCurrentTime = document.getElementById('lblCurrentTime') as HTMLElement;
 const lblTotalTime = document.getElementById('lblTotalTime') as HTMLElement;
 const lblFrameBadge = document.getElementById('lblFrameBadge') as HTMLElement;
-const lblCutBadge = document.getElementById('lblCutBadge') as HTMLElement;
 const canvasResBadge = document.getElementById('canvasResBadge') as HTMLElement;
 
 const presetList = document.getElementById('presetList') as HTMLDivElement;
@@ -70,7 +67,7 @@ const inputSpriteRotate = document.getElementById('inputSpriteRotate') as HTMLIn
 const inputSpriteLineAngle = document.getElementById('inputSpriteLineAngle') as HTMLInputElement;
 const valSpriteLineAngle = document.getElementById('valSpriteLineAngle') as HTMLElement;
 
-const selectFormat = document.getElementById('selectFormat') as HTMLSelectElement;
+const outputFormatInfo = document.getElementById('outputFormatInfo') as HTMLElement;
 const selectResolution = document.getElementById('selectResolution') as HTMLSelectElement;
 const selectFps = document.getElementById('selectFps') as HTMLSelectElement;
 const inputDuration = document.getElementById('inputDuration') as HTMLInputElement;
@@ -78,15 +75,9 @@ const valDuration = document.getElementById('valDuration') as HTMLElement;
 const inputBitrate = document.getElementById('inputBitrate') as HTMLInputElement;
 const valBitrate = document.getElementById('valBitrate') as HTMLElement;
 
-const obsCutMs = document.getElementById('obsCutMs') as HTMLElement;
-const obsCutFrame = document.getElementById('obsCutFrame') as HTMLElement;
 const obsFilename = document.getElementById('obsFilename') as HTMLElement;
-const obsTrackMatteRow = document.getElementById('obsTrackMatteRow') as HTMLElement;
-const obsLayoutRow = document.getElementById('obsLayoutRow') as HTMLElement;
+const obsOutputResolution = document.getElementById('obsOutputResolution') as HTMLElement;
 const btnCopyObsConfig = document.getElementById('btnCopyObsConfig') as HTMLButtonElement;
-const inputManualCut = document.getElementById('inputManualCut') as HTMLInputElement;
-const valManualCut = document.getElementById('valManualCut') as HTMLElement;
-const btnResetCutPoint = document.getElementById('btnResetCutPoint') as HTMLButtonElement;
 
 const guideToggle = document.getElementById('guideToggle') as HTMLElement;
 const guideContent = document.getElementById('guideContent') as HTMLElement;
@@ -107,7 +98,7 @@ const btnCloseLicense = document.getElementById('btnCloseLicense') as HTMLButton
 const exportResultArea = document.getElementById('exportResultArea') as HTMLElement;
 const exportVideoPreview = document.getElementById('exportVideoPreview') as HTMLVideoElement;
 const exportResultFileInfo = document.getElementById('exportResultFileInfo') as HTMLElement;
-const exportResultCutInfo = document.getElementById('exportResultCutInfo') as HTMLElement;
+const exportResultLayoutInfo = document.getElementById('exportResultLayoutInfo') as HTMLElement;
 const btnCancelExport = document.getElementById('btnCancelExport') as HTMLButtonElement;
 const btnDownloadExport = document.getElementById('btnDownloadExport') as HTMLAnchorElement;
 const toastMessage = document.getElementById('toastMessage') as HTMLElement;
@@ -135,11 +126,9 @@ function init() {
   syncOptionsToUI();
   engine.init({
     onFrameUpdate: handleFrameUpdate,
-    onAnalysisUpdate: handleAnalysisUpdate,
     onPlayStateChange: handlePlayStateChange,
   });
   updateObsPanel();
-  drawCoverageWaveform();
   setupEventListeners();
   setupKeyboardShortcuts();
 }
@@ -176,7 +165,6 @@ function selectPreset(presetId: string) {
   renderPresetCards();
   syncOptionsToUI();
   updateObsPanel();
-  drawCoverageWaveform();
 }
 
 // UIコントロールの値を現在の options に同期
@@ -244,24 +232,6 @@ function handleFrameUpdate(frame: number, progress: number, totalFrames: number,
   scrubberProgress.style.width = `${pct}%`;
 }
 
-// 解析結果更新イベント
-function handleAnalysisUpdate(analysis: TransitionAnalysis) {
-  const totalFrames = engine.getTotalFrames();
-  const cutFrame = engine.getEffectiveCutFrame();
-  const cutMs = engine.getEffectiveCutMs();
-
-  // シークバー上のCUTマーカー位置
-  const pct = totalFrames > 1 ? (cutFrame / (totalFrames - 1)) * 100 : 50;
-  cutpointMarker.style.left = `${pct}%`;
-
-  lblCutBadge.textContent = `CUT: ${cutFrame}f (${cutMs}ms)`;
-  inputManualCut.max = String(totalFrames - 1);
-  inputManualCut.value = String(cutFrame);
-
-  updateObsPanel();
-  drawCoverageWaveform();
-}
-
 // 再生状態変更イベント
 function handlePlayStateChange(isPlaying: boolean) {
   if (isPlaying) {
@@ -273,91 +243,23 @@ function handlePlayStateChange(isPlaying: boolean) {
   }
 }
 
-// 出力ファイル名（フレーム数入り）の取得
+// 出力ファイル名の取得
 function getOutputFilename(): string {
   const resKey = selectResolution.value as ResolutionPreset;
   const fps = selectFps.value;
-  const cutFrame = engine.getEffectiveCutFrame();
-  const ext = 'webm';
-  return `stinger_${currentPresetId}_${resKey}_${fps}fps_${cutFrame}f.${ext}`;
+  return `stinger_${currentPresetId}_${resKey}_${fps}fps.webm`;
 }
 
-// OBS設定パネルの更新
+// OBS設定パネル・出力形式表示の更新
 function updateObsPanel() {
-  const cutMs = engine.getEffectiveCutMs();
-  const cutFrame = engine.getEffectiveCutFrame();
-  const format = selectFormat.value;
-  const isTrackMatte = format.startsWith('trackmatte');
+  const resKey = selectResolution.value as ResolutionPreset;
+  const res = RESOLUTIONS[resKey];
+  const outputWidth = res.width * 2;
+  const outputHeight = res.height;
 
-  obsCutMs.textContent = `${cutMs} ms`;
-  obsCutFrame.textContent = `${cutFrame} frame`;
-
-  if (obsFilename) {
-    obsFilename.textContent = getOutputFilename();
-  }
-
-  if (isTrackMatte) {
-    obsTrackMatteRow.style.display = 'table-row';
-    obsLayoutRow.style.display = 'table-row';
-  } else {
-    obsTrackMatteRow.style.display = 'none';
-    obsLayoutRow.style.display = 'none';
-  }
-}
-
-// 不透明度波形（カバレッジ波形）をシークバー内に描画
-function drawCoverageWaveform() {
-  const analysis = engine.getTransitionAnalysis();
-  if (!analysis) return;
-
-  const rect = scrubberTrack.getBoundingClientRect();
-  coverageCanvas.width = rect.width || 600;
-  coverageCanvas.height = rect.height || 38;
-
-  const ctx = coverageCanvas.getContext('2d');
-  if (!ctx) return;
-
-  const w = coverageCanvas.width;
-  const h = coverageCanvas.height;
-  const coverages = analysis.coverages;
-  const n = coverages.length;
-  if (n === 0) return;
-
-  ctx.clearRect(0, 0, w, h);
-
-  // カバレッジエリアの描画
-  ctx.beginPath();
-  ctx.moveTo(0, h);
-
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * w;
-    const cov = coverages[i]; // 0.0 - 1.0
-    const y = h - cov * (h * 0.85);
-    ctx.lineTo(x, y);
-  }
-
-  ctx.lineTo(w, h);
-  ctx.closePath();
-
-  // グラデーション塗り
-  const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, 'rgba(245, 158, 11, 0.5)'); // 完全不透明ゾーンはオレンジ/ゴールド
-  grad.addColorStop(1, 'rgba(99, 102, 241, 0.15)');
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // トップライン
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * w;
-    const cov = coverages[i];
-    const y = h - cov * (h * 0.85);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  outputFormatInfo.textContent = `トラックマット WebM (VP9 / ${outputWidth}×${outputHeight})`;
+  obsFilename.textContent = getOutputFilename();
+  obsOutputResolution.textContent = `${outputWidth}×${outputHeight} (横並び)`;
 }
 
 // イベントリスナーのセットアップ
@@ -437,13 +339,10 @@ function setupEventListeners() {
     currentOptions.borderWidth = val;
     engine.updateOptions(currentOptions);
   });
-  inputBorderWidth.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
-  });
 
   inputHasGlow.addEventListener('change', () => {
     currentOptions.hasGlow = inputHasGlow.checked;
-    engine.updateOptions(currentOptions, true);
+    engine.updateOptions(currentOptions);
   });
 
   // HEX 特有設定
@@ -453,13 +352,10 @@ function setupEventListeners() {
     currentOptions.staggerDelay = val;
     engine.updateOptions(currentOptions);
   });
-  inputHexStagger.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
-  });
 
   inputHexRotation.addEventListener('change', () => {
     currentOptions.rotationEffect = inputHexRotation.checked;
-    engine.updateOptions(currentOptions, true);
+    engine.updateOptions(currentOptions);
   });
 
   // LINE WIPE 特有設定
@@ -469,9 +365,6 @@ function setupEventListeners() {
     currentOptions.bandWidth = val;
     engine.updateOptions(currentOptions);
   });
-  inputLineWidth.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
-  });
 
   inputLineAngle.addEventListener('input', () => {
     const val = parseInt(inputLineAngle.value, 10);
@@ -479,20 +372,17 @@ function setupEventListeners() {
     currentOptions.angleDeg = val;
     engine.updateOptions(currentOptions);
   });
-  inputLineAngle.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
-  });
 
   inputLineSpeedLines.addEventListener('change', () => {
     currentOptions.speedLines = inputLineSpeedLines.checked;
-    engine.updateOptions(currentOptions, true);
+    engine.updateOptions(currentOptions);
   });
 
   // SPRITE WIPE (DECORATED LINE) 特有設定
   selectSpriteType.addEventListener('change', () => {
     currentOptions.spriteType = selectSpriteType.value;
     customImageContainer.style.display = currentOptions.spriteType === 'custom' ? 'flex' : 'none';
-    engine.updateOptions(currentOptions, true);
+    engine.updateOptions(currentOptions);
   });
 
   btnUploadImageTrigger.addEventListener('click', () => {
@@ -516,7 +406,7 @@ function setupEventListeners() {
         customImageThumb.src = img.src;
         customImageName.textContent = file.name;
         customImageDim.textContent = `${img.naturalWidth}×${img.naturalHeight}`;
-        engine.updateOptions(currentOptions, true);
+        engine.updateOptions(currentOptions);
         showToast(`画像「${file.name}」を読み込みました`);
       };
       img.src = event.target?.result as string;
@@ -528,7 +418,7 @@ function setupEventListeners() {
     currentOptions.customImage = null;
     inputSpriteCustomImage.value = '';
     customImagePreviewWrapper.style.display = 'none';
-    engine.updateOptions(currentOptions, true);
+    engine.updateOptions(currentOptions);
     showToast('カスタム画像を解除しました');
   });
 
@@ -538,18 +428,12 @@ function setupEventListeners() {
     currentOptions.spriteSize = val;
     engine.updateOptions(currentOptions);
   });
-  inputSpriteSize.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
-  });
 
   inputSpriteSizeScatter.addEventListener('input', () => {
     const val = parseFloat(inputSpriteSizeScatter.value);
     valSpriteSizeScatter.textContent = `${Math.round(val * 100)}%`;
     currentOptions.sizeScatter = val;
     engine.updateOptions(currentOptions);
-  });
-  inputSpriteSizeScatter.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
   });
 
   inputSpriteCount.addEventListener('input', () => {
@@ -558,9 +442,6 @@ function setupEventListeners() {
     currentOptions.spriteCount = val;
     engine.updateOptions(currentOptions);
   });
-  inputSpriteCount.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
-  });
 
   inputSpriteScatter.addEventListener('input', () => {
     const val = parseInt(inputSpriteScatter.value, 10);
@@ -568,13 +449,10 @@ function setupEventListeners() {
     currentOptions.spriteScatter = val;
     engine.updateOptions(currentOptions);
   });
-  inputSpriteScatter.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
-  });
 
   inputSpriteRotate.addEventListener('change', () => {
     currentOptions.spriteRotate = inputSpriteRotate.checked;
-    engine.updateOptions(currentOptions, true);
+    engine.updateOptions(currentOptions);
   });
 
   inputSpriteLineAngle.addEventListener('input', () => {
@@ -582,9 +460,6 @@ function setupEventListeners() {
     valSpriteLineAngle.textContent = `${val}°`;
     currentOptions.angleDeg = val;
     engine.updateOptions(currentOptions);
-  });
-  inputSpriteLineAngle.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
   });
 
   // 出力設定: 解像度 / FPS / デュレーション
@@ -599,7 +474,7 @@ function setupEventListeners() {
   selectFps.addEventListener('change', () => {
     const fps = parseInt(selectFps.value, 10) as 30 | 60;
     const dur = parseFloat(inputDuration.value);
-    engine.setConfig(fps, dur, true);
+    engine.setConfig(fps, dur);
     updateObsPanel();
   });
 
@@ -607,61 +482,27 @@ function setupEventListeners() {
     const dur = parseFloat(inputDuration.value);
     valDuration.textContent = `${dur.toFixed(1)} 秒`;
     const fps = parseInt(selectFps.value, 10) as 30 | 60;
-    engine.setConfig(fps, dur, false);
-  });
-  inputDuration.addEventListener('change', () => {
-    engine.flushPendingAnalysis();
+    engine.setConfig(fps, dur);
   });
 
   inputBitrate.addEventListener('input', () => {
     valBitrate.textContent = `${inputBitrate.value} Mbps`;
   });
 
-  selectFormat.addEventListener('change', () => {
-    updateObsPanel();
-  });
-
-  // 手動移行ポイント調整スライダー
-  inputManualCut.addEventListener('input', () => {
-    const frame = parseInt(inputManualCut.value, 10);
-    engine.setManualCutFrame(frame);
-    valManualCut.textContent = `${frame}f (${engine.getEffectiveCutMs()}ms)`;
-    const totalFrames = engine.getTotalFrames();
-    const pct = totalFrames > 1 ? (frame / (totalFrames - 1)) * 100 : 50;
-    cutpointMarker.style.left = `${pct}%`;
-    updateObsPanel();
-  });
-
-  btnResetCutPoint.addEventListener('click', () => {
-    engine.setManualCutFrame(null);
-    valManualCut.textContent = '自動算出';
-    const cutFrame = engine.getEffectiveCutFrame();
-    inputManualCut.value = String(cutFrame);
-    const totalFrames = engine.getTotalFrames();
-    const pct = totalFrames > 1 ? (cutFrame / (totalFrames - 1)) * 100 : 50;
-    cutpointMarker.style.left = `${pct}%`;
-    updateObsPanel();
-    showToast('移行ポイントを自動算出値にリセットしました');
-  });
-
   // OBS設定メモコピーボタン
   btnCopyObsConfig.addEventListener('click', () => {
-    const cutMs = engine.getEffectiveCutMs();
-    const cutFrame = engine.getEffectiveCutFrame();
-    const isTrackMatte = selectFormat.value.startsWith('trackmatte');
+    const resKey = selectResolution.value as ResolutionPreset;
+    const res = RESOLUTIONS[resKey];
     const filename = getOutputFilename();
 
     const configText = [
       '【OBS スティンガー設定値】',
       `- トランジション種別: スティンガー`,
-      `- 映像ファイル: ${filename}`,
-      `- 移行ポイント (時間): ${cutMs} ms`,
-      `- 移行ポイント (フレーム): ${cutFrame} frame`,
-      `- トラックマットを使用する: ${isTrackMatte ? 'チェック (有効)' : 'チェックなし'}`,
-      isTrackMatte ? '- マットレイアウト: 横並び（左: 透過映像、右: マスク）' : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
+      `- 動画ファイル: ${filename}`,
+      `- 出力解像度: ${res.width * 2}×${res.height} (横並び)`,
+      `- トラックマットを使用する: チェック (有効)`,
+      `- マットレイアウト: 同じファイル、並べて表示（左: 透過映像、右: マスク）`,
+    ].join('\n');
 
     navigator.clipboard.writeText(configText).then(() => {
       showToast('OBS設定パラメータをクリップボードにコピーしました！');
@@ -698,11 +539,6 @@ function setupEventListeners() {
     if (e.target === licenseModal) {
       closeLicenseModal();
     }
-  });
-
-  // ウィンドウリサイズ時に波形キャンバス再描画
-  window.addEventListener('resize', () => {
-    drawCoverageWaveform();
   });
 }
 
@@ -788,7 +624,6 @@ async function startExport() {
   btnStartExport.disabled = true;
 
   engine.pause();
-  engine.flushPendingAnalysis();
   showExportModal();
 
   const resKey = selectResolution.value as ResolutionPreset;
@@ -796,13 +631,11 @@ async function startExport() {
   const fps = parseInt(selectFps.value, 10) as 30 | 60;
   const durationSec = parseFloat(inputDuration.value);
   const bitrateMbps = parseInt(inputBitrate.value, 10);
-  const format = selectFormat.value as any;
 
   const exportConfig: ExportConfig = {
     resolutionKey: resKey,
     resolution,
     fps,
-    format,
     durationSec,
     bitrateMbps,
   };
@@ -822,8 +655,7 @@ async function startExport() {
         exportStatusText.textContent = ev.statusMessage;
         exportPercentText.textContent = `${ev.progressPercent}%`;
         exportProgressBar.style.width = `${ev.progressPercent}%`;
-      },
-      engine.getEffectiveCutFrame()
+      }
     );
 
     if (exportPipeline !== pipeline) {
@@ -843,7 +675,7 @@ async function startExport() {
 
     const sizeMb = (result.filesizeBytes / (1024 * 1024)).toFixed(2);
     exportResultFileInfo.textContent = `サイズ: ${sizeMb} MB (${result.width}×${result.height}, ${result.fps}fps)`;
-    exportResultCutInfo.textContent = `移行ポイント: ${engine.getEffectiveCutMs()} ms`;
+    exportResultLayoutInfo.textContent = '形式: 横並びトラックマット (WebM)';
 
     btnDownloadExport.href = result.downloadUrl;
     btnDownloadExport.download = result.filename;

@@ -266,11 +266,9 @@
 
         <!-- タイムライン & 再生コントローラー -->
         <div class="timeline-bar">
-          <!-- シークバー & 不透明度波形 -->
+          <!-- シークバー -->
           <div class="scrubber-container" id="scrubberTrack" title="クリックまたはドラッグしてフレームをシーク">
-            <canvas id="coverageCanvas"></canvas>
             <div class="scrubber-progress" id="scrubberProgress"></div>
-            <div class="cutpoint-marker" id="cutpointMarker" style="left: 50%;"></div>
           </div>
 
           <!-- 再生コントロール -->
@@ -316,7 +314,6 @@
               <span class="current-time" id="lblCurrentTime">00:00.000</span>
               <span class="total-time">/ <span id="lblTotalTime">02.000s</span></span>
               <span class="frame-badge" id="lblFrameBadge">F: 0 / 120</span>
-              <span class="frame-badge" style="color: var(--accent-amber);" id="lblCutBadge">CUT: 60f (1000ms)</span>
             </div>
           </div>
         </div>
@@ -338,16 +335,14 @@
           <!-- 出力フォーマット -->
           <div class="section-group">
             <div class="control-row">
-              <span class="section-label">出力モード</span>
+              <span class="section-label">出力形式</span>
               <span style="font-size: 0.72rem; color: var(--accent-cyan); font-weight: 600;">アルファ透過対応</span>
             </div>
-            <select id="selectFormat" class="input-select">
-              <option value="trackmatte-webm" selected>
-                トラックマット WebM (VP9 / 3840×1080)
-              </option>
-            </select>
-            <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
-              背景透過（アルファ）対応のWebM形式で出力します。
+            <div class="format-info-box" id="outputFormatInfo">
+              トラックマット WebM (VP9 / 3840×1080)
+            </div>
+            <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px; line-height: 1.4;">
+              左に透過アニメーション、右にシーン切替マスクを並べた OBS トラックマット形式で出力します。
             </div>
           </div>
 
@@ -406,23 +401,19 @@
               </tr>
               <tr>
                 <td>映像ファイル名</td>
-                <td id="obsFilename" style="color: var(--accent-cyan); font-size: 0.72rem; word-break: break-all;">stinger_hex_1080p_60fps_60f.webm</td>
+                <td id="obsFilename" style="color: var(--accent-cyan); font-size: 0.72rem; word-break: break-all;">stinger_hex_1080p_60fps.webm</td>
               </tr>
               <tr>
-                <td>移行ポイント (時間)</td>
-                <td id="obsCutMs" style="color: #fbbf24;">1000 ms</td>
+                <td>出力解像度</td>
+                <td id="obsOutputResolution">3840×1080 (横並び)</td>
               </tr>
               <tr>
-                <td>移行ポイント (フレーム)</td>
-                <td id="obsCutFrame" style="color: #fbbf24;">60 frame</td>
-              </tr>
-              <tr id="obsTrackMatteRow">
                 <td>トラックマットを使用</td>
                 <td style="color: #10b981;">有効 (チェック)</td>
               </tr>
-              <tr id="obsLayoutRow">
+              <tr>
                 <td>マットレイアウト</td>
-                <td>横並び (左:透過映像, 右:マスク)</td>
+                <td>同じファイル、並べて表示</td>
               </tr>
             </table>
 
@@ -432,18 +423,6 @@
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
               </svg>
               OBS設定メモをコピー
-            </button>
-          </div>
-
-          <!-- 手動カットポイント微調整スライダー -->
-          <div class="section-group">
-            <div class="control-row">
-              <span class="control-label">移行ポイント手動微調整</span>
-              <span class="control-value" id="valManualCut">自動算出</span>
-            </div>
-            <input type="range" id="inputManualCut" class="input-range" min="0" max="120" value="60" />
-            <button id="btnResetCutPoint" class="btn-secondary" style="font-size: 0.72rem; padding: 4px 8px; margin-top: 4px; align-self: flex-end;">
-              自動算出値にリセット
             </button>
           </div>
 
@@ -471,10 +450,9 @@
             </div>
             <div class="accordion-content" id="guideContent" style="display: none;">
               <ol>
-                <li>OBSの「シーン遷移」ドックの「＋」から<strong>「スティンガー」</strong>を追加。</li>
-                <li><strong>映像ファイル</strong>に書き出した動画（.webm）を選択。</li>
-                <li><strong>移行ポイント種別</strong>で「フレーム」または「時間 (ミリ秒)」を選択し、上記設定値（例: <code>60 frame</code> または <code>1000 ms</code>）を入力。</li>
-                <li><strong>「トラックマットを使用する」</strong>にチェックを入れ、マットレイアウトで<strong>「横並び（同じファイル、並べて表示）」</strong>を選択。</li>
+                <li>OBSの「シーントランジション」ドックの「＋」から<strong>「スティンガー」</strong>を追加。</li>
+                <li><strong>動画ファイル</strong>に書き出した動画（.webm）を選択。</li>
+                <li><strong>「トラックマットを使用する」</strong>にチェックを入れ、マットレイアウトで<strong>「同じファイル、並べて表示（横並び）」</strong>を選択。</li>
                 <li>「プレビュー」ボタンを押して、きれいに切り替わることを確認！</li>
               </ol>
             </div>
@@ -520,7 +498,7 @@
             <video id="exportVideoPreview" controls loop style="width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border-color); max-height: 200px; background: #000;"></video>
             <div style="font-size: 0.78rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
               <span id="exportResultFileInfo">サイズ: 0MB</span>
-              <span id="exportResultCutInfo">移行ポイント: 1000ms</span>
+              <span id="exportResultLayoutInfo">形式: 横並びトラックマット</span>
             </div>
             <p class="license-summary-inline" style="text-align: left;">
               生成動画は商用・収益化配信OK / クレジット不要（<button type="button" class="license-link" id="btnExportLicenseLink">利用条件の詳細</button>）
