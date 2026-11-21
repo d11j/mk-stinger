@@ -259,34 +259,6 @@
           </div>
         </div>
 
-        <!-- 配信切替テスト用 カスタムシーン画像設定バー -->
-        <div id="sceneSimControls" class="scene-sim-bar" style="display: none;">
-          <div class="scene-slot" id="sceneASlot" title="クリックまたは画像ファイルをドロップ">
-            <span class="scene-slot-badge scene-a">Scene A (前)</span>
-            <span class="scene-slot-name" id="sceneAFileName">デフォルト</span>
-            <button type="button" class="btn-secondary scene-upload-btn" id="btnUploadSceneA">画像選択</button>
-            <button type="button" class="btn-icon scene-clear-btn" id="btnClearSceneA" title="デフォルトに戻す" style="display: none;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-            <input type="file" id="inputSceneAImage" accept="image/*" style="display: none;" />
-          </div>
-          <div class="scene-slot" id="sceneBSlot" title="クリックまたは画像ファイルをドロップ">
-            <span class="scene-slot-badge scene-b">Scene B (後)</span>
-            <span class="scene-slot-name" id="sceneBFileName">デフォルト</span>
-            <button type="button" class="btn-secondary scene-upload-btn" id="btnUploadSceneB">画像選択</button>
-            <button type="button" class="btn-icon scene-clear-btn" id="btnClearSceneB" title="デフォルトに戻す" style="display: none;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-            <input type="file" id="inputSceneBImage" accept="image/*" style="display: none;" />
-          </div>
-        </div>
-
         <!-- キャンバスビューポート -->
         <div class="canvas-viewport">
           <div class="canvas-container">
@@ -361,6 +333,40 @@
               <span class="current-time" id="lblCurrentTime">00:00.000</span>
               <span class="total-time">/ <span id="lblTotalTime">02.000s</span></span>
               <span class="frame-badge" id="lblFrameBadge">F: 0 / 120</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 配信切替テスト用 カスタムシーン画像設定パネル（タイムライン直下・レイアウトシフトなし） -->
+        <div id="sceneSimControls" class="scene-sim-bar" style="display: none;">
+          <div class="scene-sim-header">
+            <span class="scene-sim-title">配信切替テスト用シーン画像</span>
+            <span class="scene-sim-hint">任意のスクショ等を画像選択またはドラッグ＆ドロップで差し替えできます</span>
+          </div>
+          <div class="scene-sim-slots">
+            <div class="scene-slot" id="sceneASlot" title="クリックまたは画像ファイルをドロップ">
+              <span class="scene-slot-badge scene-a">Scene A (前)</span>
+              <span class="scene-slot-name" id="sceneAFileName">デフォルト</span>
+              <button type="button" class="btn-secondary scene-upload-btn" id="btnUploadSceneA">画像選択</button>
+              <button type="button" class="btn-icon scene-clear-btn" id="btnClearSceneA" title="デフォルトに戻す" style="display: none;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+              <input type="file" id="inputSceneAImage" accept="image/*" style="display: none;" />
+            </div>
+            <div class="scene-slot" id="sceneBSlot" title="クリックまたは画像ファイルをドロップ">
+              <span class="scene-slot-badge scene-b">Scene B (後)</span>
+              <span class="scene-slot-name" id="sceneBFileName">デフォルト</span>
+              <button type="button" class="btn-secondary scene-upload-btn" id="btnUploadSceneB">画像選択</button>
+              <button type="button" class="btn-icon scene-clear-btn" id="btnClearSceneB" title="デフォルトに戻す" style="display: none;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+              <input type="file" id="inputSceneBImage" accept="image/*" style="display: none;" />
             </div>
           </div>
         </div>

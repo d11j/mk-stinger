@@ -427,26 +427,67 @@ body {
   aspect-ratio: 32 / 9;
 }
 
-/* 配信切替テスト用 カスタムシーンバー */
+/* 配信切替テスト用 カスタムシーンパネル（タイムライン直下・obs-info-card と統一配色） */
 .scene-sim-bar {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 20px 14px;
+  padding: 12px 16px;
+  background-color: var(--bg-card);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.07) 0%, rgba(24, 29, 44, 0.85) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  animation: sceneBarFadeIn 0.16s ease-out;
+}
+
+@keyframes sceneBarFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.scene-sim-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.scene-sim-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+}
+
+.scene-sim-hint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.scene-sim-slots {
+  display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
-  padding: 6px 18px;
-  background-color: rgba(18, 18, 22, 0.9);
-  border-bottom: 1px solid var(--border-color);
   flex-wrap: wrap;
 }
 
 .scene-slot {
+  flex: 1 1 260px;
   display: flex;
   align-items: center;
   gap: 8px;
   background-color: var(--bg-card);
   border: 1px dashed var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 4px 8px;
+  padding: 6px 10px;
   transition: border-color 0.15s, background-color 0.15s;
 }
 
@@ -472,9 +513,10 @@ body {
 }
 
 .scene-slot-name {
+  flex: 1;
+  min-width: 0;
   font-size: 0.75rem;
   color: var(--text-secondary);
-  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
