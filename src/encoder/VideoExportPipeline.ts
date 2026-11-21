@@ -19,7 +19,6 @@ export interface ExportResult {
   height: number;
   durationSec: number;
   fps: number;
-  format: string;
 }
 
 export class VideoExportPipeline {
@@ -30,7 +29,7 @@ export class VideoExportPipeline {
   }
 
   /**
-   * スティンガー動画をフレームごとにレンダリング・エンコード
+   * スティンガー動画（トラックマット WebM）をフレームごとにレンダリング・エンコード
    * WebM (VP9) では mediabunny の並列エンコーダ技術により、
    * Chromium の VideoEncoder 単体制限を回避して透過アルファチャンネルを保持して書き出します。
    */
@@ -38,8 +37,7 @@ export class VideoExportPipeline {
     preset: PresetPlugin<any>,
     options: any,
     config: ExportConfig,
-    onProgress: (ev: ExportProgressEvent) => void,
-    cutFrame?: number
+    onProgress: (ev: ExportProgressEvent) => void
   ): Promise<ExportResult> {
     this.isAborted = false;
 
@@ -50,22 +48,17 @@ export class VideoExportPipeline {
       );
     }
 
-    const { fps, durationSec, format, bitrateMbps } = config;
+    const { fps, durationSec, bitrateMbps } = config;
     const baseWidth = config.resolution.width;
     const baseHeight = config.resolution.height;
     const totalFrames = Math.max(2, Math.round(durationSec * fps));
     const bitrate = bitrateMbps * 1_000_000;
 
-    const isTrackMatte = format === 'trackmatte-webm';
-    const outputWidth = isTrackMatte ? baseWidth * 2 : baseWidth;
+    const outputWidth = baseWidth * 2;
     const outputHeight = baseHeight;
 
     const trackMatteRenderer = new TrackMatteRenderer(baseWidth, baseHeight);
-
-    // ソースキャンバス (TrackMatte またはアニメーション単体)
-    const sourceCanvas = isTrackMatte
-      ? trackMatteRenderer.outputCanvas
-      : trackMatteRenderer.getAnimCanvas();
+    const sourceCanvas = trackMatteRenderer.outputCanvas;
 
     const target = new BufferTarget();
     const outputFormat = new WebMOutputFormat();
@@ -96,7 +89,6 @@ export class VideoExportPipeline {
 
     try {
       const frameDurationSec = 1 / fps;
-      const effectiveCutFrame = cutFrame ?? Math.floor(totalFrames / 2);
 
       // フレームごとの決定論的レンダリング & エンコードループ
       for (let f = 0; f < totalFrames; f++) {
@@ -120,23 +112,20 @@ export class VideoExportPipeline {
           options
         );
 
-        if (isTrackMatte) {
-          // 2. トラックマット合成 (左:透過アニメーション実映像 + 右:白黒移行マスク)
-          trackMatteRenderer.compositeSideBySide(
-            preset,
-            progress,
-            f,
-            totalFrames,
-            options,
-            effectiveCutFrame
-          );
-        }
+        // 2. トラックマット合成 (左:透過アニメーション実映像 + 右:白黒移行マスク)
+        trackMatteRenderer.compositeSideBySide(
+          preset,
+          progress,
+          f,
+          totalFrames,
+          options
+        );
 
         // 3. mediabunny の CanvasSource にフレームを投入
         const isKeyFrame = f === 0 || f % 30 === 0;
         await videoSource.add(timestampSec, frameDurationSec, { keyFrame: isKeyFrame });
 
-        // 進捗通知 (10フレーム毎または初回・最終フレーム)
+        // 進捗通知 (5フレーム毎または最終フレーム)
         if (f % 5 === 0 || f === totalFrames - 1) {
           const percent = Math.round(((f + 1) / totalFrames) * 95);
           onProgress({
@@ -170,8 +159,7 @@ export class VideoExportPipeline {
       const downloadUrl = URL.createObjectURL(blob);
 
       const resKey = config.resolutionKey;
-      const cutSuffix = cutFrame !== undefined ? `_${cutFrame}f` : '';
-      const filename = `stinger_${preset.id}_${resKey}_${fps}fps${cutSuffix}.${ext}`;
+      const filename = `stinger_${preset.id}_${resKey}_${fps}fps.${ext}`;
 
       onProgress({
         currentFrame: totalFrames,
@@ -190,7 +178,6 @@ export class VideoExportPipeline {
         height: outputHeight,
         durationSec,
         fps,
-        format,
       };
     } catch (err: any) {
       // エラー時はリソース解放

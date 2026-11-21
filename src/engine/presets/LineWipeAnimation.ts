@@ -187,7 +187,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
    * 斜線が通った左側は次の画面 (白 = Scene B)
    * メイン帯の中心 (centerX) を境界として、通過した左側領域を白で塗りつぶす
    */
-  renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options, cutFrame) {
+  renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
     const rad = (options.angleDeg * Math.PI) / 180;
     const tan = Math.tan(rad);
     const skewOffset = height * tan;

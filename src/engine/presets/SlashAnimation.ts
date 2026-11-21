@@ -135,7 +135,7 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
     ctx.restore();
   },
 
-  renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options, cutFrame) {
+  renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
     const rad = (options.angleDeg * Math.PI) / 180;
     const tan = Math.tan(rad);
     const skewOffset = height * tan;

@@ -111,7 +111,7 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
     }
   },
 
-  renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options, cutFrame) {
+  renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
     const bSize = options.blockSize;
     const cols = Math.ceil(width / bSize);
     const rows = Math.ceil(height / bSize);

@@ -64,15 +64,13 @@ export class TrackMatteRenderer {
    * @param frameIndex フレーム番号
    * @param totalFrames 総フレーム数
    * @param options プリセットオプション
-   * @param cutFrame トランジションポイント（カットフレーム）
    */
   public compositeSideBySide(
     preset: PresetPlugin<any>,
     progress: number,
     frameIndex: number,
     totalFrames: number,
-    options: any,
-    cutFrame: number
+    options: any
   ): OffscreenCanvas {
     const w = this.width;
     const h = this.height;
@@ -89,24 +87,16 @@ export class TrackMatteRenderer {
     this.maskCtx.fillStyle = '#000000';
     this.maskCtx.fillRect(0, 0, w, h);
 
-    if (typeof preset.renderMatte === 'function') {
-      // プリセット固有のシェイプ追従型ワイプマスクを描画
-      preset.renderMatte(
-        this.maskCtx,
-        progress,
-        frameIndex,
-        totalFrames,
-        w,
-        h,
-        options,
-        cutFrame
-      );
-    } else {
-      // デフォルト: カットポイント切替型マスク (cutFrame 前は黒、以降は白)
-      const isSceneB = frameIndex >= cutFrame;
-      this.maskCtx.fillStyle = isSceneB ? '#ffffff' : '#000000';
-      this.maskCtx.fillRect(0, 0, w, h);
-    }
+    // プリセット固有のトラックマットマスクを描画
+    preset.renderMatte(
+      this.maskCtx,
+      progress,
+      frameIndex,
+      totalFrames,
+      w,
+      h,
+      options
+    );
 
     // 右半分へマスクを転写
     this.outputCtx.drawImage(this.maskCanvas, w, 0);
