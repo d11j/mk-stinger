@@ -29,7 +29,8 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
   id: 'glitch',
   name: 'CYBER GRID (デジタルブロック)',
   category: 'サイバー',
-  description: '左からデジタルグリッドボクセルが波状に展開し、全画面をデータロックして崩壊消滅するサイバーパンクスティンガー。ギッハブの草。',
+  description:
+    '左からデジタルグリッドボクセルが波状に展開し、全画面をデータロックして崩壊消滅するサイバーパンクスティンガー。ギッハブの草。',
   defaultOptions: defaultGlitchOptions,
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
@@ -89,7 +90,7 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
         ctx.translate(cx, cy);
 
         // 全面不透明期間中は隙間なし
-        const s = (progress >= fillEnd && progress <= holdEnd) ? 1.02 : scale;
+        const s = progress >= fillEnd && progress <= holdEnd ? 1.02 : scale;
         const w = bSize * s;
         const h = bSize * s;
 
@@ -149,4 +150,3 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
     }
   },
 };
-

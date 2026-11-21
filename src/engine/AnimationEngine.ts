@@ -1,6 +1,7 @@
 import { PresetPlugin } from '../types';
 
-export type BackgroundMode = 'checkerboard' | 'black' | 'green' | 'scene_sim' | 'matte' | 'side_by_side';
+export type BackgroundMode =
+  'checkerboard' | 'black' | 'green' | 'scene_sim' | 'matte' | 'side_by_side';
 
 export interface EngineEvents {
   onFrameUpdate?: (frame: number, progress: number, totalFrames: number, fps: number) => void;
@@ -42,11 +43,7 @@ export class AnimationEngine {
   private customSceneAImage: HTMLImageElement | null = null;
   private customSceneBImage: HTMLImageElement | null = null;
 
-  constructor(
-    displayCanvas: HTMLCanvasElement,
-    preset: PresetPlugin<any>,
-    options: any
-  ) {
+  constructor(displayCanvas: HTMLCanvasElement, preset: PresetPlugin<any>, options: any) {
     this.displayCanvas = displayCanvas;
     this.displayCtx = displayCanvas.getContext('2d', { alpha: false })!;
 
@@ -126,9 +123,7 @@ export class AnimationEngine {
    * オプション更新（プレビュー表示を rAF 経由で即時更新）
    */
   public updateOptions(options: any) {
-    const changedKeys = Object.keys(options).filter(
-      (k) => this.currentOptions[k] !== options[k]
-    );
+    const changedKeys = Object.keys(options).filter((k) => this.currentOptions[k] !== options[k]);
     if (changedKeys.length === 0) return;
 
     this.currentOptions = { ...this.currentOptions, ...options };
@@ -465,7 +460,11 @@ export class AnimationEngine {
     // シーンA: カスタム画像またはゲーム画面風モック
     this.sceneACanvas = new OffscreenCanvas(w, h);
     const ctxA = this.sceneACanvas.getContext('2d')!;
-    if (this.customSceneAImage && this.customSceneAImage.complete && this.customSceneAImage.naturalWidth > 0) {
+    if (
+      this.customSceneAImage &&
+      this.customSceneAImage.complete &&
+      this.customSceneAImage.naturalWidth > 0
+    ) {
       this.drawCoverImage(ctxA, this.customSceneAImage, w, h);
     } else {
       const gradA = ctxA.createLinearGradient(0, 0, w, h);
@@ -505,13 +504,21 @@ export class AnimationEngine {
 
       ctxA.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctxA.font = '20px sans-serif';
-      ctxA.fillText('スティンガー通過中... トラックマットの白領域に Scene B が展開されます', 80, 150);
+      ctxA.fillText(
+        'スティンガー通過中... トラックマットの白領域に Scene B が展開されます',
+        80,
+        150
+      );
     }
 
     // シーンB: カスタム画像または雑談・カメラ枠風モック
     this.sceneBCanvas = new OffscreenCanvas(w, h);
     const ctxB = this.sceneBCanvas.getContext('2d')!;
-    if (this.customSceneBImage && this.customSceneBImage.complete && this.customSceneBImage.naturalWidth > 0) {
+    if (
+      this.customSceneBImage &&
+      this.customSceneBImage.complete &&
+      this.customSceneBImage.naturalWidth > 0
+    ) {
       this.drawCoverImage(ctxB, this.customSceneBImage, w, h);
     } else {
       const gradB = ctxB.createLinearGradient(0, 0, w, h);

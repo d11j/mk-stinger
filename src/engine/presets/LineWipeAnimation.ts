@@ -135,12 +135,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
     // 5. メイン帯（Main Band）描画
     // 水平方向グラデーション（左のセカンダリ/アクセントから右のプライマリへ）
     const halfW = baseBandW / 2;
-    const bandGrad = ctx.createLinearGradient(
-      centerX - halfW,
-      0,
-      centerX + halfW,
-      0
-    );
+    const bandGrad = ctx.createLinearGradient(centerX - halfW, 0, centerX + halfW, 0);
     bandGrad.addColorStop(0, options.secondaryColor);
     bandGrad.addColorStop(0.45, options.primaryColor);
     bandGrad.addColorStop(0.85, options.primaryColor);

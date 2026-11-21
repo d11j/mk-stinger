@@ -102,24 +102,10 @@ export class VideoExportPipeline {
         // 1. アニメーションをオフスクリーンキャンバスに描画
         const animCtx = trackMatteRenderer.animCtx;
         animCtx.clearRect(0, 0, baseWidth, baseHeight);
-        preset.render(
-          animCtx,
-          progress,
-          f,
-          totalFrames,
-          baseWidth,
-          baseHeight,
-          options
-        );
+        preset.render(animCtx, progress, f, totalFrames, baseWidth, baseHeight, options);
 
         // 2. トラックマット合成 (左:透過アニメーション実映像 + 右:白黒移行マスク)
-        trackMatteRenderer.compositeSideBySide(
-          preset,
-          progress,
-          f,
-          totalFrames,
-          options
-        );
+        trackMatteRenderer.compositeSideBySide(preset, progress, f, totalFrames, options);
 
         // 3. mediabunny の CanvasSource にフレームを投入
         const isKeyFrame = f === 0 || f % 30 === 0;

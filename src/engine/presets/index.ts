@@ -15,9 +15,7 @@ export const ALL_PRESETS: PresetPlugin<any>[] = [
   GlitchAnimationPlugin,
 ];
 
-export const PRESET_MAP = new Map<string, PresetPlugin<any>>(
-  ALL_PRESETS.map((p) => [p.id, p])
-);
+export const PRESET_MAP = new Map<string, PresetPlugin<any>>(ALL_PRESETS.map((p) => [p.id, p]));
 
 export {
   HexAnimationPlugin,
@@ -33,4 +31,3 @@ export {
   defaultSlashOptions,
   defaultGlitchOptions,
 };
-

@@ -118,7 +118,8 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
   id: 'hex',
   name: 'HEX (ハニカム充填)',
   category: '幾何学',
-  description: '画面左から1つずつ六角形を画面全体に充填し、充填完了時に全六角形が縮小消滅するスティンガー。六角形の高さは画面の1/3。',
+  description:
+    '画面左から1つずつ六角形を画面全体に充填し、充填完了時に全六角形が縮小消滅するスティンガー。六角形の高さは画面の1/3。',
   defaultOptions: defaultHexOptions,
 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
@@ -138,9 +139,7 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
     const isShrinkPhase = progress > holdEndProgress;
 
     // 縮小フェーズの進捗 (0.0 -> 1.0)
-    const shrinkT = isShrinkPhase
-      ? (progress - holdEndProgress) / (1.0 - holdEndProgress)
-      : 0;
+    const shrinkT = isShrinkPhase ? (progress - holdEndProgress) / (1.0 - holdEndProgress) : 0;
 
     // イージング関数
     const easeOutBack = (x: number): number => {
@@ -185,7 +184,7 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
       } else {
         // 縮小消滅フェーズ: 「充填が完了したら全ての六角形を縮小して消滅させる」
         const shrinkEase = easeInBack(Math.min(1, shrinkT));
-        scale = Math.max(0, (1.035 - shrinkEase * 1.035));
+        scale = Math.max(0, 1.035 - shrinkEase * 1.035);
         if (options.rotationEffect) {
           rot = -shrinkT * (Math.PI / 3);
         }
@@ -207,14 +206,7 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
       if (cell.colorIndex === 2) cellColor = options.accentColor;
 
       // 放射グラデーションで立体感とハイテク感を演出
-      const cellGrad = ctx.createRadialGradient(
-        0,
-        0,
-        0,
-        0,
-        0,
-        Math.max(1, currentRadius)
-      );
+      const cellGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(1, currentRadius));
       cellGrad.addColorStop(0, cellColor);
       cellGrad.addColorStop(0.85, cellColor);
       cellGrad.addColorStop(1, '#0f172a');
@@ -286,4 +278,3 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
     }
   },
 };
-
