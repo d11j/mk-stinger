@@ -1,6 +1,6 @@
 import { PresetPlugin } from '../types';
 
-export type BackgroundMode = 'checkerboard' | 'black' | 'green' | 'scene_sim';
+export type BackgroundMode = 'checkerboard' | 'black' | 'green' | 'scene_sim' | 'matte' | 'side_by_side';
 
 export interface EngineEvents {
   onFrameUpdate?: (frame: number, progress: number, totalFrames: number, fps: number) => void;
@@ -26,6 +26,8 @@ export class AnimationEngine {
   private isLooping: boolean = true;
   private playTimerId: number | null = null;
   private backgroundMode: BackgroundMode = 'checkerboard';
+  private baseWidth: number = 1920;
+  private baseHeight: number = 1080;
 
   private events: EngineEvents = {};
   private isInitialized: boolean = false;
@@ -37,6 +39,8 @@ export class AnimationEngine {
   private sceneBCanvas: OffscreenCanvas | null = null;
   private simMaskCanvas: OffscreenCanvas | null = null;
   private simBlendCanvas: OffscreenCanvas | null = null;
+  private customSceneAImage: HTMLImageElement | null = null;
+  private customSceneBImage: HTMLImageElement | null = null;
 
   constructor(
     displayCanvas: HTMLCanvasElement,
@@ -75,13 +79,31 @@ export class AnimationEngine {
   }
 
   public resize(width: number, height: number) {
-    if (this.displayCanvas.width === width && this.displayCanvas.height === height) return;
-    this.displayCanvas.width = width;
-    this.displayCanvas.height = height;
-    this.bufferCanvas.width = width;
-    this.bufferCanvas.height = height;
+    if (this.baseWidth === width && this.baseHeight === height) return;
+    this.baseWidth = width;
+    this.baseHeight = height;
+    this.syncCanvasDimensions();
     this.createSimScenes(width, height);
     this.renderCurrentFrame();
+  }
+
+  private syncCanvasDimensions() {
+    const targetDisplayWidth =
+      this.backgroundMode === 'side_by_side' ? this.baseWidth * 2 : this.baseWidth;
+    if (
+      this.displayCanvas.width !== targetDisplayWidth ||
+      this.displayCanvas.height !== this.baseHeight
+    ) {
+      this.displayCanvas.width = targetDisplayWidth;
+      this.displayCanvas.height = this.baseHeight;
+    }
+    if (
+      this.bufferCanvas.width !== this.baseWidth ||
+      this.bufferCanvas.height !== this.baseHeight
+    ) {
+      this.bufferCanvas.width = this.baseWidth;
+      this.bufferCanvas.height = this.baseHeight;
+    }
   }
 
   public setConfig(fps: 30 | 60, durationSec: number) {
@@ -115,11 +137,30 @@ export class AnimationEngine {
 
   public setBackgroundMode(mode: BackgroundMode) {
     this.backgroundMode = mode;
+    this.syncCanvasDimensions();
     this.renderCurrentFrame();
   }
 
   public getBackgroundMode(): BackgroundMode {
     return this.backgroundMode;
+  }
+
+  public setLooping(looping: boolean) {
+    this.isLooping = looping;
+  }
+
+  public getIsLooping(): boolean {
+    return this.isLooping;
+  }
+
+  public setCustomSceneImage(scene: 'A' | 'B', image: HTMLImageElement | null) {
+    if (scene === 'A') {
+      this.customSceneAImage = image;
+    } else {
+      this.customSceneBImage = image;
+    }
+    this.createSimScenes(this.baseWidth, this.baseHeight);
+    this.renderCurrentFrame();
   }
 
   public getPreset() {
@@ -207,6 +248,19 @@ export class AnimationEngine {
     this.playTimerId = window.setTimeout(tick, intervalMs);
   }
 
+  /**
+   * 1回切替テスト用: ループ再生を OFF にし、先頭フレーム (Scene A) から末尾フレーム (Scene B) まで再生して停止する
+   */
+  public playOneShot() {
+    if (this.isPlaying) {
+      this.pause();
+    }
+    this.setLooping(false);
+    this.currentFrame = 0;
+    this.renderCurrentFrame();
+    this.play();
+  }
+
   public pause() {
     if (!this.isPlaying) return;
     this.isPlaying = false;
@@ -251,27 +305,76 @@ export class AnimationEngine {
   // --- レンダリング処理 ---
 
   public renderCurrentFrame() {
-    const w = this.displayCanvas.width;
-    const h = this.displayCanvas.height;
+    const bw = this.baseWidth;
+    const bh = this.baseHeight;
     const progress = this.totalFrames > 1 ? this.currentFrame / (this.totalFrames - 1) : 0;
 
-    // 1. 背景描画
-    this.drawBackground(this.displayCtx, w, h);
+    if (this.backgroundMode === 'matte') {
+      this.displayCtx.fillStyle = '#000000';
+      this.displayCtx.fillRect(0, 0, bw, bh);
+      this.currentPreset.renderMatte(
+        this.displayCtx,
+        progress,
+        this.currentFrame,
+        this.totalFrames,
+        bw,
+        bh,
+        this.currentOptions
+      );
+    } else if (this.backgroundMode === 'side_by_side') {
+      // 左半分 (0〜bw-1): 透過アニメーション（市松模様背景）
+      this.drawCheckerboard(this.displayCtx, bw, bh);
+      this.bufferCtx.clearRect(0, 0, bw, bh);
+      this.currentPreset.render(
+        this.bufferCtx,
+        progress,
+        this.currentFrame,
+        this.totalFrames,
+        bw,
+        bh,
+        this.currentOptions
+      );
+      this.displayCtx.drawImage(this.bufferCanvas, 0, 0);
 
-    // 2. アニメーションをバッファキャンバスに決定論的描画
-    this.bufferCtx.clearRect(0, 0, w, h);
-    this.currentPreset.render(
-      this.bufferCtx,
-      progress,
-      this.currentFrame,
-      this.totalFrames,
-      w,
-      h,
-      this.currentOptions
-    );
+      // 右半分 (bw〜2*bw-1): トラックマット白黒マスク
+      if (this.simMaskCanvas) {
+        const maskCtx = this.simMaskCanvas.getContext('2d')!;
+        maskCtx.fillStyle = '#000000';
+        maskCtx.fillRect(0, 0, bw, bh);
+        this.currentPreset.renderMatte(
+          maskCtx,
+          progress,
+          this.currentFrame,
+          this.totalFrames,
+          bw,
+          bh,
+          this.currentOptions
+        );
+        this.displayCtx.drawImage(this.simMaskCanvas, bw, 0);
+      }
 
-    // 3. バッファをディスプレイキャンバスに合成
-    this.displayCtx.drawImage(this.bufferCanvas, 0, 0);
+      // 中央境界線
+      this.displayCtx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      this.displayCtx.fillRect(bw - 1, 0, 2, bh);
+    } else {
+      // 1. 背景描画
+      this.drawBackground(this.displayCtx, bw, bh);
+
+      // 2. アニメーションをバッファキャンバスに決定論的描画
+      this.bufferCtx.clearRect(0, 0, bw, bh);
+      this.currentPreset.render(
+        this.bufferCtx,
+        progress,
+        this.currentFrame,
+        this.totalFrames,
+        bw,
+        bh,
+        this.currentOptions
+      );
+
+      // 3. バッファをディスプレイキャンバスに合成
+      this.displayCtx.drawImage(this.bufferCanvas, 0, 0);
+    }
 
     // イベント通知
     if (this.isInitialized && this.events.onFrameUpdate) {
@@ -342,83 +445,107 @@ export class AnimationEngine {
     }
   }
 
+  private drawCoverImage(
+    ctx: OffscreenCanvasRenderingContext2D,
+    img: HTMLImageElement,
+    w: number,
+    h: number
+  ) {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, w, h);
+    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+    const drawW = img.naturalWidth * scale;
+    const drawH = img.naturalHeight * scale;
+    const drawX = (w - drawW) / 2;
+    const drawY = (h - drawH) / 2;
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  }
+
   private createSimScenes(w: number, h: number) {
-    // シーンA: ゲーム画面風
+    // シーンA: カスタム画像またはゲーム画面風モック
     this.sceneACanvas = new OffscreenCanvas(w, h);
     const ctxA = this.sceneACanvas.getContext('2d')!;
-    const gradA = ctxA.createLinearGradient(0, 0, w, h);
-    gradA.addColorStop(0, '#1e1b4b');
-    gradA.addColorStop(1, '#0f172a');
-    ctxA.fillStyle = gradA;
-    ctxA.fillRect(0, 0, w, h);
+    if (this.customSceneAImage && this.customSceneAImage.complete && this.customSceneAImage.naturalWidth > 0) {
+      this.drawCoverImage(ctxA, this.customSceneAImage, w, h);
+    } else {
+      const gradA = ctxA.createLinearGradient(0, 0, w, h);
+      gradA.addColorStop(0, '#1e1b4b');
+      gradA.addColorStop(1, '#0f172a');
+      ctxA.fillStyle = gradA;
+      ctxA.fillRect(0, 0, w, h);
 
-    // サイバーグリッド
-    ctxA.strokeStyle = 'rgba(99, 102, 241, 0.15)';
-    ctxA.lineWidth = 1;
-    for (let x = 0; x < w; x += 80) {
-      ctxA.beginPath();
-      ctxA.moveTo(x, 0);
-      ctxA.lineTo(x, h);
-      ctxA.stroke();
+      // サイバーグリッド
+      ctxA.strokeStyle = 'rgba(99, 102, 241, 0.15)';
+      ctxA.lineWidth = 1;
+      for (let x = 0; x < w; x += 80) {
+        ctxA.beginPath();
+        ctxA.moveTo(x, 0);
+        ctxA.lineTo(x, h);
+        ctxA.stroke();
+      }
+      for (let y = 0; y < h; y += 80) {
+        ctxA.beginPath();
+        ctxA.moveTo(0, y);
+        ctxA.lineTo(w, y);
+        ctxA.stroke();
+      }
+
+      // ゲームUIモック
+      ctxA.font = '1000px sans-serif';
+      ctxA.textAlign = 'center';
+      ctxA.textBaseline = 'middle';
+      ctxA.fillStyle = '#aaaaaa';
+      ctxA.fillText('A', w / 2, h / 2);
+
+      ctxA.textAlign = 'left';
+      ctxA.textBaseline = 'bottom';
+      ctxA.fillStyle = '#6366f1';
+      ctxA.font = 'bold 36px sans-serif';
+      ctxA.fillText('🎮 SCENE A: GAMEPLAY (移行前シーン)', 80, 100);
+
+      ctxA.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctxA.font = '20px sans-serif';
+      ctxA.fillText('スティンガー通過中... トラックマットの白領域に Scene B が展開されます', 80, 150);
     }
-    for (let y = 0; y < h; y += 80) {
-      ctxA.beginPath();
-      ctxA.moveTo(0, y);
-      ctxA.lineTo(w, y);
-      ctxA.stroke();
-    }
 
-    // ゲームUIモック
-    ctxA.font = '1000px sans-serif';
-    ctxA.textAlign = 'center';
-    ctxA.textBaseline = 'middle';
-    ctxA.fillStyle = '#aaaaaa';
-    ctxA.fillText('A', w / 2, h / 2);
-
-    ctxA.textAlign = 'left';
-    ctxA.textBaseline = 'bottom';
-    ctxA.fillStyle = '#6366f1';
-    ctxA.font = 'bold 36px sans-serif';
-    ctxA.fillText('🎮 SCENE A: GAMEPLAY (移行前シーン)', 80, 100);
-
-    ctxA.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctxA.font = '20px sans-serif';
-    ctxA.fillText('スティンガー通過中... トラックマットの白領域に Scene B が展開されます', 80, 150);
-
-    // シーンB: 雑談・カメラ枠風
+    // シーンB: カスタム画像または雑談・カメラ枠風モック
     this.sceneBCanvas = new OffscreenCanvas(w, h);
     const ctxB = this.sceneBCanvas.getContext('2d')!;
-    const gradB = ctxB.createLinearGradient(0, 0, w, h);
-    gradB.addColorStop(0, '#312e81');
-    gradB.addColorStop(1, '#3b0764');
-    ctxB.fillStyle = gradB;
-    ctxB.fillRect(0, 0, w, h);
+    if (this.customSceneBImage && this.customSceneBImage.complete && this.customSceneBImage.naturalWidth > 0) {
+      this.drawCoverImage(ctxB, this.customSceneBImage, w, h);
+    } else {
+      const gradB = ctxB.createLinearGradient(0, 0, w, h);
+      gradB.addColorStop(0, '#312e81');
+      gradB.addColorStop(1, '#3b0764');
+      ctxB.fillStyle = gradB;
+      ctxB.fillRect(0, 0, w, h);
 
-    ctxB.font = '1000px sans-serif';
-    ctxB.textAlign = 'center';
-    ctxB.textBaseline = 'middle';
-    ctxB.fillStyle = '#aaaaaa';
-    ctxB.fillText('B', w / 2, h / 2);
+      ctxB.font = '1000px sans-serif';
+      ctxB.textAlign = 'center';
+      ctxB.textBaseline = 'middle';
+      ctxB.fillStyle = '#aaaaaa';
+      ctxB.fillText('B', w / 2, h / 2);
 
-    ctxB.textAlign = 'left';
-    ctxB.textBaseline = 'bottom';
-    ctxB.fillStyle = '#f43f5e';
-    ctxB.font = 'bold 36px sans-serif';
-    ctxB.fillText('🎙️ SCENE B: JUST CHATTING (移行後シーン)', 80, 100);
+      ctxB.textAlign = 'left';
+      ctxB.textBaseline = 'bottom';
+      ctxB.fillStyle = '#f43f5e';
+      ctxB.font = 'bold 36px sans-serif';
+      ctxB.fillText('🎙️ SCENE B: JUST CHATTING (移行後シーン)', 80, 100);
 
-    ctxB.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctxB.font = '20px sans-serif';
-    ctxB.fillText('トラックマット通過完了！ 新しいシーンへ移行しました', 80, 150);
+      ctxB.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctxB.font = '20px sans-serif';
+      ctxB.fillText('トラックマット通過完了！ 新しいシーンへ移行しました', 80, 150);
 
-    // カメラ枠
-    ctxB.strokeStyle = '#ec4899';
-    ctxB.lineWidth = 4;
-    ctxB.strokeRect(80, 200, 480, 270);
-    ctxB.fillStyle = 'rgba(0,0,0,0.5)';
-    ctxB.fillRect(80, 200, 480, 270);
-    ctxB.fillStyle = '#ffffff';
-    ctxB.font = '18px sans-serif';
-    ctxB.fillText('CAMERA FRAME', 220, 340);
+      // カメラ枠
+      ctxB.strokeStyle = '#ec4899';
+      ctxB.lineWidth = 4;
+      ctxB.strokeRect(80, 200, 480, 270);
+      ctxB.fillStyle = 'rgba(0,0,0,0.5)';
+      ctxB.fillRect(80, 200, 480, 270);
+      ctxB.fillStyle = '#ffffff';
+      ctxB.font = '18px sans-serif';
+      ctxB.fillText('CAMERA FRAME', 220, 340);
+    }
 
     // 合成用キャンバス
     this.simMaskCanvas = new OffscreenCanvas(w, h);
