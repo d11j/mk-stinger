@@ -109,7 +109,27 @@
 
           <!-- カラーパレット設定 -->
           <div class="section-group">
-            <span class="section-label">カラーパレット</span>
+            <div class="section-header-row">
+              <span class="section-label">カラーパレット</span>
+              <div class="palette-action-group">
+                <button
+                  type="button"
+                  id="btnRandomColors"
+                  class="btn-palette-action"
+                  title="調和の取れたランダム配色を生成"
+                >
+                  🎲 ランダム
+                </button>
+                <button
+                  type="button"
+                  id="btnResetColors"
+                  class="btn-palette-action"
+                  title="現在のプリセットの初期色に戻す"
+                >
+                  ↺ 初期色
+                </button>
+              </div>
+            </div>
             <div class="color-picker-grid">
               <div class="color-input-wrapper">
                 <span>メイン色</span>
@@ -134,9 +154,12 @@
                 <input type="color" id="accentColorInput" class="color-dot-input" value="#ec4899" />
               </div>
               <div class="color-input-wrapper">
-                <span>ボーダー/発光</span>
+                <span>ボーダー色</span>
                 <input type="color" id="borderColorInput" class="color-dot-input" value="#38bdf8" />
               </div>
+            </div>
+            <div class="color-theme-grid" id="colorThemeList">
+              <!-- JSで動的生成 -->
             </div>
           </div>
 
@@ -167,6 +190,15 @@
             </div>
 
             <div id="glowBlurControlGroup" class="param-field" style="margin-top: 6px">
+              <div class="control-row">
+                <span class="control-label">グロー色</span>
+                <input
+                  type="color"
+                  id="glowColorInput"
+                  class="color-dot-input color-dot-sm"
+                  value="#38bdf8"
+                />
+              </div>
               <div class="control-row">
                 <span class="control-label">グロー強度</span>
                 <span class="control-value" id="valGlowBlur">15px</span>

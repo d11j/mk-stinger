@@ -298,6 +298,38 @@ body {
 }
 
 /* Color Pickers */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.palette-action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-palette-action {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+}
+
+.btn-palette-action:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent-indigo);
+  color: var(--text-primary);
+}
+
 .color-picker-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -331,6 +363,11 @@ body {
   overflow: hidden;
 }
 
+.color-dot-input.color-dot-sm {
+  width: 22px;
+  height: 22px;
+}
+
 .color-dot-input::-webkit-color-swatch-wrapper {
   padding: 0;
 }
@@ -338,6 +375,64 @@ body {
 .color-dot-input::-webkit-color-swatch {
   border: none;
   border-radius: 50%;
+}
+
+.color-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.color-theme-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  min-width: 0;
+}
+
+.color-theme-chip:hover {
+  background-color: var(--bg-hover);
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+.color-theme-chip.active {
+  background-color: rgba(99, 102, 241, 0.14);
+  border-color: var(--accent-indigo);
+}
+
+.color-theme-swatches {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.color-theme-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.color-theme-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.color-theme-chip:hover .color-theme-name,
+.color-theme-chip.active .color-theme-name {
+  color: var(--text-primary);
 }
 
 /* Preview Canvas Area */
