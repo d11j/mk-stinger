@@ -234,7 +234,7 @@ export class PresetParamsPanel {
     if (existingImg) {
       previewWrapper.style.display = 'flex';
       thumbImg.src = existingImg.src;
-      fileNameEl.textContent = 'カスタム画像';
+      fileNameEl.textContent = existingImg.dataset.fileName || 'カスタム画像';
       dimEl.textContent = `${existingImg.naturalWidth}×${existingImg.naturalHeight}`;
     } else {
       previewWrapper.style.display = 'none';
@@ -244,6 +244,7 @@ export class PresetParamsPanel {
       readImageFile(
         file,
         (img) => {
+          img.dataset.fileName = file.name;
           previewWrapper.style.display = 'flex';
           thumbImg.src = img.src;
           fileNameEl.textContent = file.name;

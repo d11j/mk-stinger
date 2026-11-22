@@ -1155,7 +1155,8 @@ body {
   line-height: 1.3;
 }
 
-/* License Button, Summary & Modal */
+/* License Button, Share Button, Summary & Modal */
+.btn-header-share,
 .btn-header-license {
   display: inline-flex;
   align-items: center;
@@ -1171,6 +1172,12 @@ body {
   transition: all 0.15s ease;
 }
 
+.btn-header-share {
+  color: var(--accent-cyan);
+  border-color: rgba(6, 182, 212, 0.35);
+}
+
+.btn-header-share:hover,
 .btn-header-license:hover {
   color: var(--text-primary);
   border-color: var(--accent-cyan);
