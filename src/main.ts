@@ -6,6 +6,7 @@ import { VideoExportPipeline } from './encoder/VideoExportPipeline';
 import { PresetParamsPanel } from './ui/PresetParamsPanel';
 import { readImageFile, setupDropZone } from './ui/fileHelpers';
 import { COLOR_THEMES, ColorPalette, generateRandomColorPalette } from './ui/colorThemes';
+import { PresetStateStore } from './state/PresetStateStore';
 
 // DOM 要素の取得
 const previewCanvas = document.getElementById('previewCanvas') as HTMLCanvasElement;
@@ -95,11 +96,8 @@ const btnCancelExport = document.getElementById('btnCancelExport') as HTMLButton
 const btnDownloadExport = document.getElementById('btnDownloadExport') as HTMLAnchorElement;
 const toastMessage = document.getElementById('toastMessage') as HTMLElement;
 
-// 現在の設定
-let currentPresetId = 'hex';
-let currentPreset = PRESET_MAP.get(currentPresetId)!;
-let currentOptions = { ...currentPreset.defaultOptions };
-let activeColorThemeId: string | null = null;
+// 現在の設定（同一セッション内のプリセット別ドラフト・カラー引き継ぎを管理）
+const stateStore = new PresetStateStore(PRESET_MAP, 'hex');
 
 const DEFAULT_EXPORT_DETAILS_TEXT =
   'WebCodecs API により、ブラウザ上で直接高速エンコードを実行しています。';
@@ -108,13 +106,17 @@ let exportPipeline: VideoExportPipeline | null = null;
 let isExporting = false;
 
 // AnimationEngine の初期化
-const engine = new AnimationEngine(previewCanvas, currentPreset, currentOptions);
+const engine = new AnimationEngine(
+  previewCanvas,
+  stateStore.getCurrentPreset(),
+  stateStore.getCurrentOptions()
+);
 
 // スキーマ駆動パラメータパネルの初期化
 const presetParamsPanel = new PresetParamsPanel(presetSpecificControls, {
   onOptionChange: (key, value) => {
-    currentOptions[key] = value;
-    engine.updateOptions(currentOptions);
+    stateStore.updateOption(key, value);
+    engine.updateOptions(stateStore.getCurrentOptions());
   },
   onToast: showToast,
 });
@@ -124,7 +126,7 @@ function init() {
   renderPresetCards();
   renderColorThemes();
   syncOptionsToUI();
-  presetParamsPanel.render(currentPreset.params, currentOptions);
+  presetParamsPanel.render(stateStore.getCurrentPreset().params, stateStore.getCurrentOptions());
   engine.init({
     onFrameUpdate: handleFrameUpdate,
     onPlayStateChange: handlePlayStateChange,
@@ -136,10 +138,11 @@ function init() {
 
 // プリセットカードのレンダリング
 function renderPresetCards() {
+  const activePresetId = stateStore.getCurrentPresetId();
   presetList.innerHTML = '';
   for (const preset of ALL_PRESETS) {
     const card = document.createElement('div');
-    card.className = `preset-card ${preset.id === currentPresetId ? 'active' : ''}`;
+    card.className = `preset-card ${preset.id === activePresetId ? 'active' : ''}`;
     card.innerHTML = `
       <div class="preset-card-title">${preset.name}</div>
       <div class="preset-card-desc">${preset.category}</div>
@@ -149,21 +152,17 @@ function renderPresetCards() {
     });
     presetList.appendChild(card);
   }
-  presetDescription.textContent = currentPreset.description;
+  presetDescription.textContent = stateStore.getCurrentPreset().description;
 }
 
 function selectPreset(presetId: string) {
-  const preset = PRESET_MAP.get(presetId);
-  if (!preset) return;
-  currentPresetId = presetId;
-  currentPreset = preset;
-  currentOptions = { ...preset.defaultOptions };
-  activeColorThemeId = null;
+  const result = stateStore.selectPreset(presetId);
+  if (!result) return;
 
-  engine.setPreset(preset, currentOptions);
+  engine.setPreset(result.preset, result.options);
   renderPresetCards();
   syncOptionsToUI();
-  presetParamsPanel.render(currentPreset.params, currentOptions);
+  presetParamsPanel.render(result.preset.params, result.options);
   updateObsPanel();
 }
 
@@ -204,25 +203,23 @@ function renderColorThemes() {
 }
 
 function updateActiveColorThemeUI() {
+  const activeThemeId = stateStore.getActiveColorThemeId();
   colorThemeList.querySelectorAll<HTMLButtonElement>('.color-theme-chip').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.themeId === activeColorThemeId);
+    btn.classList.toggle('active', btn.dataset.themeId === activeThemeId);
   });
 }
 
 function applyColorPalette(palette: ColorPalette, themeId: string | null) {
-  currentOptions.primaryColor = palette.primaryColor;
-  currentOptions.secondaryColor = palette.secondaryColor;
-  currentOptions.accentColor = palette.accentColor;
-  currentOptions.borderColor = palette.borderColor;
-  currentOptions.glowColor = palette.glowColor;
-  activeColorThemeId = themeId;
+  stateStore.applyColorPalette(palette, themeId);
 
   syncOptionsToUI();
-  engine.updateOptions(currentOptions);
+  engine.updateOptions(stateStore.getCurrentOptions());
 }
 
 // UIコントロールの値を現在の options に同期
 function syncOptionsToUI() {
+  const currentOptions = stateStore.getCurrentOptions();
+
   primaryColorInput.value = currentOptions.primaryColor ?? '#6366f1';
   secondaryColorInput.value = currentOptions.secondaryColor ?? '#06b6d4';
   accentColorInput.value = currentOptions.accentColor ?? '#ec4899';
@@ -276,7 +273,7 @@ function handlePlayStateChange(isPlaying: boolean) {
 function getOutputFilename(): string {
   const resKey = selectResolution.value as ResolutionPreset;
   const fps = selectFps.value;
-  return `stinger_${currentPresetId}_${resKey}_${fps}fps.webm`;
+  return `stinger_${stateStore.getCurrentPresetId()}_${resKey}_${fps}fps.webm`;
 }
 
 // OBS設定パネル・出力形式表示の更新
@@ -445,14 +442,15 @@ function setupEventListeners() {
 
   // カラーピッカー変更
   const updateColors = () => {
-    currentOptions.primaryColor = primaryColorInput.value;
-    currentOptions.secondaryColor = secondaryColorInput.value;
-    currentOptions.accentColor = accentColorInput.value;
-    currentOptions.borderColor = borderColorInput.value;
-    currentOptions.glowColor = glowColorInput.value;
-    activeColorThemeId = null;
+    stateStore.updateColors({
+      primaryColor: primaryColorInput.value,
+      secondaryColor: secondaryColorInput.value,
+      accentColor: accentColorInput.value,
+      borderColor: borderColorInput.value,
+      glowColor: glowColorInput.value,
+    });
     updateActiveColorThemeUI();
-    engine.updateOptions(currentOptions);
+    engine.updateOptions(stateStore.getCurrentOptions());
   };
 
   primaryColorInput.addEventListener('input', updateColors);
@@ -467,38 +465,30 @@ function setupEventListeners() {
   });
 
   btnResetColors.addEventListener('click', () => {
-    const defaults = currentPreset.defaultOptions;
-    applyColorPalette(
-      {
-        primaryColor: defaults.primaryColor,
-        secondaryColor: defaults.secondaryColor,
-        accentColor: defaults.accentColor,
-        borderColor: defaults.borderColor,
-        glowColor: defaults.glowColor,
-      },
-      null
-    );
+    stateStore.resetColorsToPresetDefault();
+    syncOptionsToUI();
+    engine.updateOptions(stateStore.getCurrentOptions());
   });
 
   // ボーダー幅 & グロー
   inputBorderWidth.addEventListener('input', () => {
     const val = parseInt(inputBorderWidth.value, 10);
     valBorderWidth.textContent = `${val}px`;
-    currentOptions.borderWidth = val;
-    engine.updateOptions(currentOptions);
+    stateStore.updateOption('borderWidth', val);
+    engine.updateOptions(stateStore.getCurrentOptions());
   });
 
   inputHasGlow.addEventListener('change', () => {
-    currentOptions.hasGlow = inputHasGlow.checked;
+    stateStore.updateOption('hasGlow', inputHasGlow.checked);
     glowBlurControlGroup.style.display = inputHasGlow.checked ? 'flex' : 'none';
-    engine.updateOptions(currentOptions);
+    engine.updateOptions(stateStore.getCurrentOptions());
   });
 
   inputGlowBlur.addEventListener('input', () => {
     const val = parseInt(inputGlowBlur.value, 10);
     valGlowBlur.textContent = `${val}px`;
-    currentOptions.glowBlur = val;
-    engine.updateOptions(currentOptions);
+    stateStore.updateOption('glowBlur', val);
+    engine.updateOptions(stateStore.getCurrentOptions());
   });
 
   // 出力設定: 解像度 / FPS / デュレーション
@@ -683,14 +673,19 @@ async function startExport() {
   exportPipeline = pipeline;
 
   try {
-    const result = await pipeline.exportVideo(currentPreset, currentOptions, exportConfig, (ev) => {
-      if (exportPipeline !== pipeline) {
-        return;
+    const result = await pipeline.exportVideo(
+      stateStore.getCurrentPreset(),
+      stateStore.getCurrentOptions(),
+      exportConfig,
+      (ev) => {
+        if (exportPipeline !== pipeline) {
+          return;
+        }
+        exportStatusText.textContent = ev.statusMessage;
+        exportPercentText.textContent = `${ev.progressPercent}%`;
+        exportProgressBar.style.width = `${ev.progressPercent}%`;
       }
-      exportStatusText.textContent = ev.statusMessage;
-      exportPercentText.textContent = `${ev.progressPercent}%`;
-      exportProgressBar.style.width = `${ev.progressPercent}%`;
-    });
+    );
 
     if (exportPipeline !== pipeline) {
       return;
