@@ -1,6 +1,7 @@
 import { Output, WebMOutputFormat, BufferTarget, CanvasSource } from 'mediabunny';
-import { ExportConfig, PresetPlugin } from '../types';
+import { ExportConfig, LogoOverlayOptions, PresetPlugin } from '../types';
 import { TrackMatteRenderer } from '../renderer/TrackMatteRenderer';
+import { renderLogoOverlay } from '../engine/LogoOverlayRenderer';
 
 export interface ExportProgressEvent {
   currentFrame: number;
@@ -37,7 +38,8 @@ export class VideoExportPipeline {
     preset: PresetPlugin<any>,
     options: any,
     config: ExportConfig,
-    onProgress: (ev: ExportProgressEvent) => void
+    onProgress: (ev: ExportProgressEvent) => void,
+    logoOverlay?: LogoOverlayOptions
   ): Promise<ExportResult> {
     this.isAborted = false;
 
@@ -103,6 +105,9 @@ export class VideoExportPipeline {
         const animCtx = trackMatteRenderer.animCtx;
         animCtx.clearRect(0, 0, baseWidth, baseHeight);
         preset.render(animCtx, progress, f, totalFrames, baseWidth, baseHeight, options);
+        if (logoOverlay) {
+          renderLogoOverlay(animCtx, progress, baseWidth, baseHeight, logoOverlay);
+        }
 
         // 2. トラックマット合成 (左:透過アニメーション実映像 + 右:白黒移行マスク)
         trackMatteRenderer.compositeSideBySide(preset, progress, f, totalFrames, options);

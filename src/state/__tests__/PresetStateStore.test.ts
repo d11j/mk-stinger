@@ -180,4 +180,62 @@ describe('PresetStateStore', () => {
     expect(switched!.options.primaryColor).toBe('#102030');
     expect(switched!.options.glowColor).toBe('#506070');
   });
+
+  it('共通ロゴオーバーレイ設定と画像はプリセットを切り替えても保持される', () => {
+    const store = new PresetStateStore(PRESET_MAP, 'hex');
+    const mockLogo = { src: 'data:image/png;base64,logo' } as HTMLImageElement;
+
+    store.updateLogoOverlay({
+      enabled: true,
+      image: mockLogo,
+      animation: 'zoom',
+      scale: 0.5,
+      offsetX: 0.15,
+      offsetY: -0.1,
+    });
+
+    store.selectPreset('glitch');
+    const afterSwitch = store.getLogoOverlay();
+    expect(afterSwitch.enabled).toBe(true);
+    expect(afterSwitch.image).toBe(mockLogo);
+    expect(afterSwitch.animation).toBe('zoom');
+    expect(afterSwitch.scale).toBe(0.5);
+
+    store.resetLogoOverlayPosition();
+    expect(store.getLogoOverlay().offsetX).toBe(0);
+    expect(store.getLogoOverlay().offsetY).toBe(0);
+    expect(store.getLogoOverlay().scale).toBe(0.5);
+  });
+
+  it('updateLogoOverlay は開始・終了タイミングの逆転を防ぎ最小区間幅 (0.05) を維持する', () => {
+    const store = new PresetStateStore(PRESET_MAP, 'hex');
+
+    store.updateLogoOverlay({ startProgress: 0.85 });
+    expect(store.getLogoOverlay().startProgress).toBe(0.85);
+    expect(store.getLogoOverlay().endProgress).toBe(0.9);
+
+    store.updateLogoOverlay({ endProgress: 0.5 });
+    expect(store.getLogoOverlay().endProgress).toBe(0.5);
+    expect(store.getLogoOverlay().startProgress).toBe(0.45);
+  });
+
+  it('applyRestoredState でロゴオーバーレイ設定を復元でき、image は常に null になる', () => {
+    const store = new PresetStateStore(PRESET_MAP, 'hex');
+    const mockLogo = { src: 'data:image/png;base64,logo' } as HTMLImageElement;
+    store.updateLogoOverlay({ image: mockLogo, enabled: true });
+
+    store.applyRestoredState('slash', {}, false, {
+      ...store.getLogoOverlay(),
+      enabled: true,
+      animation: 'slide-up',
+      scale: 0.45,
+      image: mockLogo,
+    });
+
+    const logo = store.getLogoOverlay();
+    expect(logo.enabled).toBe(true);
+    expect(logo.animation).toBe('slide-up');
+    expect(logo.scale).toBe(0.45);
+    expect(logo.image).toBeNull();
+  });
 });

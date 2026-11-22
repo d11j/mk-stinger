@@ -86,7 +86,7 @@
 
     <!-- メインコンテンツ -->
     <main class="app-main">
-      <!-- 左パネル: アニメーション設定 -->
+      <!-- 左パネル: アニメーション & ロゴ設定 -->
       <aside class="panel">
         <div class="panel-header">
           <h2 class="panel-title">
@@ -104,139 +104,386 @@
             アニメーション設定
           </h2>
         </div>
-        <div class="panel-content">
-          <!-- プリセット選択 -->
-          <div class="section-group">
-            <span class="section-label">プリセット選択</span>
-            <div class="preset-grid" id="presetList">
-              <!-- JSで動的生成 -->
-            </div>
-          </div>
-
-          <div
-            id="presetDescription"
-            style="
-              font-size: 0.78rem;
-              color: var(--text-secondary);
-              background: var(--bg-card);
-              padding: 10px;
-              border-radius: var(--radius-sm);
-              border: 1px solid var(--border-color);
-              line-height: 1.4;
-            "
+        <div class="panel-tabs" role="tablist">
+          <button
+            type="button"
+            class="panel-tab active"
+            data-left-tab="animation"
+            role="tab"
+            aria-selected="true"
           >
-            プリセットの説明
-          </div>
-
-          <!-- カラーパレット設定 -->
-          <div class="section-group">
-            <div class="section-header-row">
-              <span class="section-label">カラーパレット</span>
-              <div class="palette-action-group">
-                <button
-                  type="button"
-                  id="btnRandomColors"
-                  class="btn-palette-action"
-                  title="調和の取れたランダム配色を生成"
-                >
-                  🎲 ランダム
-                </button>
-                <button
-                  type="button"
-                  id="btnResetColors"
-                  class="btn-palette-action"
-                  title="現在のプリセットの初期色に戻す"
-                >
-                  ↺ 初期色
-                </button>
+            アニメーション
+          </button>
+          <button
+            type="button"
+            class="panel-tab"
+            data-left-tab="logo"
+            role="tab"
+            aria-selected="false"
+          >
+            ロゴ
+            <span class="tab-indicator-dot" id="logoTabIndicator" style="display: none"></span>
+          </button>
+        </div>
+        <div class="panel-content">
+          <div id="leftTabAnimation" class="left-tab-pane">
+            <!-- プリセット選択 -->
+            <div class="section-group">
+              <span class="section-label">プリセット選択</span>
+              <div class="preset-grid" id="presetList">
+                <!-- JSで動的生成 -->
               </div>
             </div>
-            <div class="color-picker-grid">
-              <div class="color-input-wrapper">
-                <span>メイン色</span>
-                <input
-                  type="color"
-                  id="primaryColorInput"
-                  class="color-dot-input"
-                  value="#6366f1"
-                />
-              </div>
-              <div class="color-input-wrapper">
-                <span>サブ色</span>
-                <input
-                  type="color"
-                  id="secondaryColorInput"
-                  class="color-dot-input"
-                  value="#06b6d4"
-                />
-              </div>
-              <div class="color-input-wrapper">
-                <span>アクセント</span>
-                <input type="color" id="accentColorInput" class="color-dot-input" value="#ec4899" />
-              </div>
-              <div class="color-input-wrapper">
-                <span>ボーダー色</span>
-                <input type="color" id="borderColorInput" class="color-dot-input" value="#38bdf8" />
-              </div>
-            </div>
-            <div class="color-theme-grid" id="colorThemeList">
-              <!-- JSで動的生成 -->
-            </div>
-          </div>
 
-          <!-- スタイル詳細パラメータ -->
-          <div class="section-group">
-            <span class="section-label">ディテール調整</span>
-
-            <div class="control-row">
-              <span class="control-label">ボーダー幅</span>
-              <span class="control-value" id="valBorderWidth">3px</span>
-            </div>
-            <input
-              type="range"
-              id="inputBorderWidth"
-              class="input-range"
-              min="0"
-              max="10"
-              step="1"
-              value="3"
-            />
-
-            <div class="control-row" style="margin-top: 8px">
-              <span class="control-label">ネオングロー効果</span>
-              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer">
-                <input type="checkbox" id="inputHasGlow" checked />
-                <span style="font-size: 0.8rem; color: var(--text-secondary)">有効</span>
-              </label>
+            <div
+              id="presetDescription"
+              style="
+                font-size: 0.78rem;
+                color: var(--text-secondary);
+                background: var(--bg-card);
+                padding: 10px;
+                border-radius: var(--radius-sm);
+                border: 1px solid var(--border-color);
+                line-height: 1.4;
+              "
+            >
+              プリセットの説明
             </div>
 
-            <div id="glowBlurControlGroup" class="param-field" style="margin-top: 6px">
+            <!-- カラーパレット設定 -->
+            <div class="section-group">
+              <div class="section-header-row">
+                <span class="section-label">カラーパレット</span>
+                <div class="palette-action-group">
+                  <button
+                    type="button"
+                    id="btnRandomColors"
+                    class="btn-palette-action"
+                    title="調和の取れたランダム配色を生成"
+                  >
+                    🎲 ランダム
+                  </button>
+                  <button
+                    type="button"
+                    id="btnResetColors"
+                    class="btn-palette-action"
+                    title="現在のプリセットの初期色に戻す"
+                  >
+                    ↺ 初期色
+                  </button>
+                </div>
+              </div>
+              <div class="color-picker-grid">
+                <div class="color-input-wrapper">
+                  <span>メイン色</span>
+                  <input
+                    type="color"
+                    id="primaryColorInput"
+                    class="color-dot-input"
+                    value="#6366f1"
+                  />
+                </div>
+                <div class="color-input-wrapper">
+                  <span>サブ色</span>
+                  <input
+                    type="color"
+                    id="secondaryColorInput"
+                    class="color-dot-input"
+                    value="#06b6d4"
+                  />
+                </div>
+                <div class="color-input-wrapper">
+                  <span>アクセント</span>
+                  <input
+                    type="color"
+                    id="accentColorInput"
+                    class="color-dot-input"
+                    value="#ec4899"
+                  />
+                </div>
+                <div class="color-input-wrapper">
+                  <span>ボーダー色</span>
+                  <input
+                    type="color"
+                    id="borderColorInput"
+                    class="color-dot-input"
+                    value="#38bdf8"
+                  />
+                </div>
+              </div>
+              <div class="color-theme-grid" id="colorThemeList">
+                <!-- JSで動的生成 -->
+              </div>
+            </div>
+
+            <!-- スタイル詳細パラメータ -->
+            <div class="section-group">
+              <span class="section-label">ディテール調整</span>
+
               <div class="control-row">
-                <span class="control-label">グロー色</span>
-                <input
-                  type="color"
-                  id="glowColorInput"
-                  class="color-dot-input color-dot-sm"
-                  value="#38bdf8"
-                />
-              </div>
-              <div class="control-row">
-                <span class="control-label">グロー強度</span>
-                <span class="control-value" id="valGlowBlur">15px</span>
+                <span class="control-label">ボーダー幅</span>
+                <span class="control-value" id="valBorderWidth">3px</span>
               </div>
               <input
                 type="range"
-                id="inputGlowBlur"
+                id="inputBorderWidth"
                 class="input-range"
                 min="0"
-                max="40"
+                max="10"
                 step="1"
-                value="15"
+                value="3"
               />
+
+              <div class="control-row" style="margin-top: 8px">
+                <span class="control-label">ネオングロー効果</span>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer">
+                  <input type="checkbox" id="inputHasGlow" checked />
+                  <span style="font-size: 0.8rem; color: var(--text-secondary)">有効</span>
+                </label>
+              </div>
+
+              <div id="glowBlurControlGroup" class="param-field" style="margin-top: 6px">
+                <div class="control-row">
+                  <span class="control-label">グロー色</span>
+                  <input
+                    type="color"
+                    id="glowColorInput"
+                    class="color-dot-input color-dot-sm"
+                    value="#38bdf8"
+                  />
+                </div>
+                <div class="control-row">
+                  <span class="control-label">グロー強度</span>
+                  <span class="control-value" id="valGlowBlur">15px</span>
+                </div>
+                <input
+                  type="range"
+                  id="inputGlowBlur"
+                  class="input-range"
+                  min="0"
+                  max="40"
+                  step="1"
+                  value="15"
+                />
+              </div>
+
+              <!-- プリセット固有パラメータ（スキーマ駆動で動的生成） -->
+              <div id="presetSpecificControls" class="preset-specific-controls"></div>
+            </div>
+          </div>
+
+          <!-- ロゴオーバーレイタブ（全プリセット共通） -->
+          <div id="leftTabLogo" class="left-tab-pane" style="display: none">
+            <div class="section-group">
+              <span class="section-label">表示モード</span>
+              <div class="mode-toggle-group">
+                <button type="button" class="mode-toggle-btn active" id="btnLogoModeOff">
+                  OFF
+                </button>
+                <button type="button" class="mode-toggle-btn" id="btnLogoModeImage">
+                  ロゴ画像
+                </button>
+              </div>
+              <div class="logo-mode-hint">
+                全プリセット共通でトランジション中央にロゴを重ねます（開始/終了時は自動非表示）
+              </div>
             </div>
 
-            <!-- プリセット固有パラメータ（スキーマ駆動で動的生成） -->
-            <div id="presetSpecificControls" class="preset-specific-controls"></div>
+            <div class="section-group">
+              <span class="section-label">ロゴ画像</span>
+              <div class="custom-upload-box param-image-box" id="logoUploadBox">
+                <div class="param-image-header">
+                  <span class="param-image-title">チャンネルロゴ（PNG / SVG 等）</span>
+                  <button
+                    type="button"
+                    class="btn-secondary param-image-upload-btn"
+                    id="btnUploadLogo"
+                  >
+                    画像を選択
+                  </button>
+                  <input type="file" id="inputLogoImage" accept="image/*" style="display: none" />
+                </div>
+                <div class="param-image-preview" id="logoImagePreview" style="display: none">
+                  <div class="custom-image-thumb-box">
+                    <img id="logoThumbImg" alt="logo preview" />
+                  </div>
+                  <div class="param-image-meta">
+                    <div class="param-image-name" id="logoFileName"></div>
+                    <div class="param-image-dim" id="logoImageDim"></div>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-icon param-image-clear-btn"
+                    id="btnClearLogo"
+                    title="画像を解除"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+                <div class="param-image-hint">
+                  クリックまたはドラッグ＆ドロップでロゴを読み込みます（透過PNG推奨）
+                </div>
+              </div>
+              <div id="logoMissingImageNotice" class="logo-missing-notice" style="display: none">
+                ロゴ表示が有効です。画像を選択するとプレビュー・動画に反映されます。
+              </div>
+            </div>
+
+            <div id="logoSettingsGroup" class="left-tab-pane" style="display: none">
+              <div class="section-group">
+                <span class="section-label">アニメーション</span>
+                <select id="selectLogoAnimation" class="input-select"></select>
+
+                <div class="control-row" style="margin-top: 4px">
+                  <span class="control-label">イン/アウト遷移長さ</span>
+                  <span class="control-value" id="valLogoTransition">25%</span>
+                </div>
+                <input
+                  type="range"
+                  id="inputLogoTransition"
+                  class="input-range"
+                  min="5"
+                  max="50"
+                  step="5"
+                  value="25"
+                />
+              </div>
+
+              <div class="section-group">
+                <div class="section-header-row">
+                  <span class="section-label">サイズ & 位置</span>
+                  <button
+                    type="button"
+                    id="btnResetLogoPos"
+                    class="btn-palette-action"
+                    title="X/Y位置を中央 (0%) に戻す"
+                  >
+                    ↺ 中央に戻す
+                  </button>
+                </div>
+
+                <div class="control-row">
+                  <span class="control-label">ロゴサイズ</span>
+                  <span class="control-value" id="valLogoScale">35%</span>
+                </div>
+                <input
+                  type="range"
+                  id="inputLogoScale"
+                  class="input-range"
+                  min="10"
+                  max="80"
+                  step="1"
+                  value="35"
+                />
+
+                <div class="control-row">
+                  <span class="control-label">横位置 (X)</span>
+                  <span class="control-value" id="valLogoOffsetX">0%</span>
+                </div>
+                <input
+                  type="range"
+                  id="inputLogoOffsetX"
+                  class="input-range"
+                  min="-50"
+                  max="50"
+                  step="1"
+                  value="0"
+                />
+
+                <div class="control-row">
+                  <span class="control-label">縦位置 (Y)</span>
+                  <span class="control-value" id="valLogoOffsetY">0%</span>
+                </div>
+                <input
+                  type="range"
+                  id="inputLogoOffsetY"
+                  class="input-range"
+                  min="-50"
+                  max="50"
+                  step="1"
+                  value="0"
+                />
+              </div>
+
+              <div class="section-group">
+                <span class="section-label">表示タイミング</span>
+
+                <div class="control-row">
+                  <span class="control-label">表示開始</span>
+                  <span class="control-value" id="valLogoStart">20%</span>
+                </div>
+                <input
+                  type="range"
+                  id="inputLogoStart"
+                  class="input-range"
+                  min="0"
+                  max="90"
+                  step="1"
+                  value="20"
+                />
+
+                <div class="control-row">
+                  <span class="control-label">表示終了</span>
+                  <span class="control-value" id="valLogoEnd">80%</span>
+                </div>
+                <input
+                  type="range"
+                  id="inputLogoEnd"
+                  class="input-range"
+                  min="10"
+                  max="100"
+                  step="1"
+                  value="80"
+                />
+              </div>
+
+              <div class="section-group">
+                <span class="section-label">シャドウ / グロー</span>
+
+                <div class="control-row">
+                  <span class="control-label">シャドウ・グロー効果</span>
+                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer">
+                    <input type="checkbox" id="inputLogoHasShadow" checked />
+                    <span style="font-size: 0.8rem; color: var(--text-secondary)">有効</span>
+                  </label>
+                </div>
+
+                <div id="logoShadowControlGroup" class="param-field" style="margin-top: 6px">
+                  <div class="control-row">
+                    <span class="control-label">シャドウ色</span>
+                    <input
+                      type="color"
+                      id="logoShadowColorInput"
+                      class="color-dot-input color-dot-sm"
+                      value="#000000"
+                    />
+                  </div>
+                  <div class="control-row">
+                    <span class="control-label">ぼかし強度</span>
+                    <span class="control-value" id="valLogoShadowBlur">20px</span>
+                  </div>
+                  <input
+                    type="range"
+                    id="inputLogoShadowBlur"
+                    class="input-range"
+                    min="0"
+                    max="50"
+                    step="1"
+                    value="20"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </aside>
@@ -299,6 +546,12 @@
             id="scrubberTrack"
             title="クリックまたはドラッグしてフレームをシーク"
           >
+            <div
+              class="scrubber-overlay-range"
+              id="scrubberOverlayRange"
+              style="display: none"
+              title="ロゴオーバーレイ表示区間"
+            ></div>
             <div class="scrubber-progress" id="scrubberProgress"></div>
           </div>
 

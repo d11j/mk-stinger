@@ -1,5 +1,9 @@
-import { PresetPlugin } from '../types';
+import { LogoOverlayOptions, PresetPlugin } from '../types';
 import { ColorPalette } from '../ui/colorThemes';
+import {
+  DEFAULT_LOGO_OVERLAY_OPTIONS,
+  LOGO_OVERLAY_MIN_DURATION,
+} from '../engine/LogoOverlayRenderer';
 
 const COLOR_KEYS = [
   'primaryColor',
@@ -29,8 +33,12 @@ function extractPaletteFromOptions(source: Record<string, any>): ColorPalette {
   };
 }
 
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 /**
- * 同一セッション内でのプリセット別ドラフトとカラー引き継ぎを管理するメモリ内ストア
+ * 同一セッション内でのプリセット別ドラフトとカラー引き継ぎ・共通ロゴオーバーレイを管理するメモリ内ストア
  */
 export class PresetStateStore {
   private readonly presets: Map<string, PresetPlugin<any>>;
@@ -38,6 +46,7 @@ export class PresetStateStore {
   private currentPresetId: string;
   private sharedPalette: ColorPalette | null = null;
   private activeColorThemeId: string | null = null;
+  private logoOverlay: LogoOverlayOptions = { ...DEFAULT_LOGO_OVERLAY_OPTIONS };
 
   constructor(presets: Map<string, PresetPlugin<any>>, initialPresetId: string) {
     const initialPreset = presets.get(initialPresetId);
@@ -137,7 +146,8 @@ export class PresetStateStore {
   public applyRestoredState(
     presetId: string,
     restoredOptions: Record<string, any>,
-    isColorCustomized: boolean
+    isColorCustomized: boolean,
+    restoredLogoOverlay?: LogoOverlayOptions
   ): { preset: PresetPlugin<any>; options: Record<string, any> } | null {
     const preset = this.presets.get(presetId);
     if (!preset) {
@@ -153,6 +163,63 @@ export class PresetStateStore {
     this.sharedPalette = isColorCustomized ? extractPaletteFromOptions(draft) : null;
     this.activeColorThemeId = null;
 
+    if (restoredLogoOverlay) {
+      this.logoOverlay = {
+        ...DEFAULT_LOGO_OVERLAY_OPTIONS,
+        ...restoredLogoOverlay,
+        image: null,
+      };
+    }
+
     return { preset, options: draft };
+  }
+
+  public getLogoOverlay(): LogoOverlayOptions {
+    return { ...this.logoOverlay };
+  }
+
+  /**
+   * 全プリセット共通のロゴオーバーレイ設定を更新する（開始・終了タイミングの逆転を自動補正）
+   */
+  public updateLogoOverlay(patch: Partial<LogoOverlayOptions>): LogoOverlayOptions {
+    const next: LogoOverlayOptions = {
+      ...this.logoOverlay,
+      ...patch,
+    };
+
+    const hasStart = patch.startProgress !== undefined;
+    const hasEnd = patch.endProgress !== undefined;
+    let start = round2(Math.min(0.9, Math.max(0, next.startProgress)));
+    let end = round2(Math.min(1, Math.max(0.1, next.endProgress)));
+
+    if (hasStart && !hasEnd) {
+      if (start > end - LOGO_OVERLAY_MIN_DURATION) {
+        end = round2(Math.min(1, start + LOGO_OVERLAY_MIN_DURATION));
+        if (start > end - LOGO_OVERLAY_MIN_DURATION) {
+          start = round2(Math.max(0, end - LOGO_OVERLAY_MIN_DURATION));
+        }
+      }
+    } else if (hasEnd && !hasStart) {
+      if (end < start + LOGO_OVERLAY_MIN_DURATION) {
+        start = round2(Math.max(0, end - LOGO_OVERLAY_MIN_DURATION));
+        if (end < start + LOGO_OVERLAY_MIN_DURATION) {
+          end = round2(Math.min(1, start + LOGO_OVERLAY_MIN_DURATION));
+        }
+      }
+    } else if (end < start + LOGO_OVERLAY_MIN_DURATION) {
+      end = round2(Math.min(1, start + LOGO_OVERLAY_MIN_DURATION));
+      if (end - start < LOGO_OVERLAY_MIN_DURATION) {
+        start = round2(Math.max(0, end - LOGO_OVERLAY_MIN_DURATION));
+      }
+    }
+
+    next.startProgress = start;
+    next.endProgress = end;
+    this.logoOverlay = next;
+    return { ...this.logoOverlay };
+  }
+
+  public resetLogoOverlayPosition(): LogoOverlayOptions {
+    return this.updateLogoOverlay({ offsetX: 0, offsetY: 0 });
   }
 }

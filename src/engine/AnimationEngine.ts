@@ -1,4 +1,5 @@
-import { PresetPlugin } from '../types';
+import { LogoOverlayOptions, PresetPlugin } from '../types';
+import { DEFAULT_LOGO_OVERLAY_OPTIONS, renderLogoOverlay } from './LogoOverlayRenderer';
 
 export type BackgroundMode =
   'checkerboard' | 'black' | 'green' | 'scene_sim' | 'matte' | 'side_by_side';
@@ -18,6 +19,7 @@ export class AnimationEngine {
   // 内部状態
   private currentPreset: PresetPlugin<any>;
   private currentOptions: any;
+  private logoOverlay: LogoOverlayOptions = { ...DEFAULT_LOGO_OVERLAY_OPTIONS };
   private fps: 30 | 60 = 60;
   private durationSec: number = 2.0;
   private totalFrames: number = 120;
@@ -128,6 +130,18 @@ export class AnimationEngine {
 
     this.currentOptions = { ...this.currentOptions, ...options };
     this.requestRender();
+  }
+
+  /**
+   * 全プリセット共通のロゴオーバーレイ設定を更新
+   */
+  public setLogoOverlay(overlay: LogoOverlayOptions) {
+    this.logoOverlay = { ...overlay };
+    this.requestRender();
+  }
+
+  public getLogoOverlay(): LogoOverlayOptions {
+    return { ...this.logoOverlay };
   }
 
   public setBackgroundMode(mode: BackgroundMode) {
@@ -329,6 +343,7 @@ export class AnimationEngine {
         bh,
         this.currentOptions
       );
+      renderLogoOverlay(this.bufferCtx, progress, bw, bh, this.logoOverlay);
       this.displayCtx.drawImage(this.bufferCanvas, 0, 0);
 
       // 右半分 (bw〜2*bw-1): トラックマット白黒マスク
@@ -366,6 +381,7 @@ export class AnimationEngine {
         bh,
         this.currentOptions
       );
+      renderLogoOverlay(this.bufferCtx, progress, bw, bh, this.logoOverlay);
 
       // 3. バッファをディスプレイキャンバスに合成
       this.displayCtx.drawImage(this.bufferCanvas, 0, 0);

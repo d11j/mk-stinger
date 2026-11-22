@@ -1,7 +1,14 @@
 import confetti from 'canvas-confetti';
 import { ALL_PRESETS, PRESET_MAP } from './engine/presets';
 import { AnimationEngine, BackgroundMode } from './engine/AnimationEngine';
-import { ExportConfig, RESOLUTIONS, ResolutionPreset } from './types';
+import { LOGO_OVERLAY_ANIMATIONS } from './engine/LogoOverlayRenderer';
+import {
+  ExportConfig,
+  LogoOverlayAnimation,
+  LogoOverlayOptions,
+  RESOLUTIONS,
+  ResolutionPreset,
+} from './types';
 import { VideoExportPipeline } from './encoder/VideoExportPipeline';
 import { PresetParamsPanel } from './ui/PresetParamsPanel';
 import { readImageFile, setupDropZone } from './ui/fileHelpers';
@@ -65,6 +72,47 @@ const inputGlowBlur = document.getElementById('inputGlowBlur') as HTMLInputEleme
 const valGlowBlur = document.getElementById('valGlowBlur') as HTMLElement;
 
 const presetSpecificControls = document.getElementById('presetSpecificControls') as HTMLElement;
+
+// 左パネルタブ & ロゴオーバーレイ要素
+const leftTabButtons = document.querySelectorAll<HTMLButtonElement>('[data-left-tab]');
+const leftTabAnimation = document.getElementById('leftTabAnimation') as HTMLElement;
+const leftTabLogo = document.getElementById('leftTabLogo') as HTMLElement;
+const logoTabIndicator = document.getElementById('logoTabIndicator') as HTMLElement;
+
+const btnLogoModeOff = document.getElementById('btnLogoModeOff') as HTMLButtonElement;
+const btnLogoModeImage = document.getElementById('btnLogoModeImage') as HTMLButtonElement;
+const logoUploadBox = document.getElementById('logoUploadBox') as HTMLElement;
+const btnUploadLogo = document.getElementById('btnUploadLogo') as HTMLButtonElement;
+const inputLogoImage = document.getElementById('inputLogoImage') as HTMLInputElement;
+const logoImagePreview = document.getElementById('logoImagePreview') as HTMLElement;
+const logoThumbImg = document.getElementById('logoThumbImg') as HTMLImageElement;
+const logoFileName = document.getElementById('logoFileName') as HTMLElement;
+const logoImageDim = document.getElementById('logoImageDim') as HTMLElement;
+const btnClearLogo = document.getElementById('btnClearLogo') as HTMLButtonElement;
+const logoMissingImageNotice = document.getElementById('logoMissingImageNotice') as HTMLElement;
+const logoSettingsGroup = document.getElementById('logoSettingsGroup') as HTMLElement;
+
+const selectLogoAnimation = document.getElementById('selectLogoAnimation') as HTMLSelectElement;
+const inputLogoTransition = document.getElementById('inputLogoTransition') as HTMLInputElement;
+const valLogoTransition = document.getElementById('valLogoTransition') as HTMLElement;
+const inputLogoScale = document.getElementById('inputLogoScale') as HTMLInputElement;
+const valLogoScale = document.getElementById('valLogoScale') as HTMLElement;
+const inputLogoOffsetX = document.getElementById('inputLogoOffsetX') as HTMLInputElement;
+const valLogoOffsetX = document.getElementById('valLogoOffsetX') as HTMLElement;
+const inputLogoOffsetY = document.getElementById('inputLogoOffsetY') as HTMLInputElement;
+const valLogoOffsetY = document.getElementById('valLogoOffsetY') as HTMLElement;
+const btnResetLogoPos = document.getElementById('btnResetLogoPos') as HTMLButtonElement;
+const inputLogoStart = document.getElementById('inputLogoStart') as HTMLInputElement;
+const valLogoStart = document.getElementById('valLogoStart') as HTMLElement;
+const inputLogoEnd = document.getElementById('inputLogoEnd') as HTMLInputElement;
+const valLogoEnd = document.getElementById('valLogoEnd') as HTMLElement;
+const inputLogoHasShadow = document.getElementById('inputLogoHasShadow') as HTMLInputElement;
+const logoShadowControlGroup = document.getElementById('logoShadowControlGroup') as HTMLElement;
+const logoShadowColorInput = document.getElementById('logoShadowColorInput') as HTMLInputElement;
+const inputLogoShadowBlur = document.getElementById('inputLogoShadowBlur') as HTMLInputElement;
+const valLogoShadowBlur = document.getElementById('valLogoShadowBlur') as HTMLElement;
+
+const scrubberOverlayRange = document.getElementById('scrubberOverlayRange') as HTMLElement;
 
 const outputFormatInfo = document.getElementById('outputFormatInfo') as HTMLElement;
 const selectResolution = document.getElementById('selectResolution') as HTMLSelectElement;
@@ -150,24 +198,39 @@ function applyOutputSettingsToUIAndEngine(output: ShareableOutputSettings) {
   engine.setConfig(output.fps, output.durationSec);
 }
 
+function renderLogoAnimationOptions() {
+  selectLogoAnimation.innerHTML = '';
+  for (const anim of LOGO_OVERLAY_ANIMATIONS) {
+    const opt = document.createElement('option');
+    opt.value = anim.value;
+    opt.textContent = anim.label;
+    selectLogoAnimation.appendChild(opt);
+  }
+}
+
 // 画面読み込み時の初期UIセットアップ
 function init() {
+  renderLogoAnimationOptions();
+
   const restored = parseShareUrl(window.location.search, PRESET_MAP, 'hex');
   if (restored.hasShareParams) {
     const applied = stateStore.applyRestoredState(
       restored.presetId,
       restored.options,
-      restored.isColorCustomized
+      restored.isColorCustomized,
+      restored.logoOverlay
     );
     if (applied) {
       engine.setPreset(applied.preset, applied.options);
     }
+    engine.setLogoOverlay(stateStore.getLogoOverlay());
     applyOutputSettingsToUIAndEngine(restored.output);
   }
 
   renderPresetCards();
   renderColorThemes();
   syncOptionsToUI();
+  syncLogoOverlayToUI();
   presetParamsPanel.render(stateStore.getCurrentPreset().params, stateStore.getCurrentOptions());
   engine.init({
     onFrameUpdate: handleFrameUpdate,
@@ -289,6 +352,79 @@ function syncOptionsToUI() {
   const glowBlurVal = currentOptions.glowBlur ?? 15;
   inputGlowBlur.value = String(glowBlurVal);
   valGlowBlur.textContent = `${glowBlurVal}px`;
+}
+
+function formatSignedPercent(value: number): string {
+  const pct = Math.round(value * 100);
+  return pct > 0 ? `+${pct}%` : `${pct}%`;
+}
+
+// ロゴオーバーレイ設定を UI・タブインジケーター・シークバー区間ハイライトに同期
+function syncLogoOverlayToUI() {
+  const logo = stateStore.getLogoOverlay();
+
+  btnLogoModeOff.classList.toggle('active', !logo.enabled);
+  btnLogoModeImage.classList.toggle('active', logo.enabled);
+  logoTabIndicator.style.display = logo.enabled ? 'inline-block' : 'none';
+  logoSettingsGroup.style.display = logo.enabled ? 'flex' : 'none';
+  logoMissingImageNotice.style.display = logo.enabled && !logo.image ? 'block' : 'none';
+
+  if (logo.image) {
+    logoImagePreview.style.display = 'flex';
+    logoThumbImg.src = logo.image.src;
+    logoFileName.textContent = logo.image.dataset.fileName || 'ロゴ画像';
+    logoImageDim.textContent = `${logo.image.naturalWidth}×${logo.image.naturalHeight}`;
+  } else {
+    logoImagePreview.style.display = 'none';
+  }
+
+  selectLogoAnimation.value = logo.animation;
+
+  const transPct = Math.round(logo.transitionRatio * 100);
+  inputLogoTransition.value = String(transPct);
+  valLogoTransition.textContent = `${transPct}%`;
+
+  const scalePct = Math.round(logo.scale * 100);
+  inputLogoScale.value = String(scalePct);
+  valLogoScale.textContent = `${scalePct}%`;
+
+  inputLogoOffsetX.value = String(Math.round(logo.offsetX * 100));
+  valLogoOffsetX.textContent = formatSignedPercent(logo.offsetX);
+
+  inputLogoOffsetY.value = String(Math.round(logo.offsetY * 100));
+  valLogoOffsetY.textContent = formatSignedPercent(logo.offsetY);
+
+  const startPct = Math.round(logo.startProgress * 100);
+  inputLogoStart.value = String(startPct);
+  valLogoStart.textContent = `${startPct}%`;
+
+  const endPct = Math.round(logo.endProgress * 100);
+  inputLogoEnd.value = String(endPct);
+  valLogoEnd.textContent = `${endPct}%`;
+
+  inputLogoHasShadow.checked = logo.hasShadow;
+  logoShadowControlGroup.style.display = logo.hasShadow ? 'flex' : 'none';
+  logoShadowColorInput.value = logo.shadowColor;
+  inputLogoShadowBlur.value = String(logo.shadowBlur);
+  valLogoShadowBlur.textContent = `${logo.shadowBlur}px`;
+
+  if (logo.enabled) {
+    scrubberOverlayRange.style.display = 'block';
+    scrubberOverlayRange.style.left = `${logo.startProgress * 100}%`;
+    scrubberOverlayRange.style.width = `${Math.max(0, logo.endProgress - logo.startProgress) * 100}%`;
+  } else {
+    scrubberOverlayRange.style.display = 'none';
+  }
+}
+
+function setLeftTab(tab: 'animation' | 'logo') {
+  leftTabButtons.forEach((btn) => {
+    const isActive = btn.dataset.leftTab === tab;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', String(isActive));
+  });
+  leftTabAnimation.style.display = tab === 'animation' ? 'flex' : 'none';
+  leftTabLogo.style.display = tab === 'logo' ? 'flex' : 'none';
 }
 
 // フレーム更新イベント
@@ -542,6 +678,104 @@ function setupEventListeners() {
     engine.updateOptions(stateStore.getCurrentOptions());
   });
 
+  // 左パネルタブ切り替え
+  leftTabButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.leftTab === 'logo' ? 'logo' : 'animation';
+      setLeftTab(tab);
+    });
+  });
+
+  // ロゴオーバーレイ設定
+  const applyLogoOverlayPatch = (patch: Partial<LogoOverlayOptions>) => {
+    const updated = stateStore.updateLogoOverlay(patch);
+    engine.setLogoOverlay(updated);
+    syncLogoOverlayToUI();
+  };
+
+  btnLogoModeOff.addEventListener('click', () => {
+    applyLogoOverlayPatch({ enabled: false });
+  });
+
+  btnLogoModeImage.addEventListener('click', () => {
+    applyLogoOverlayPatch({ enabled: true });
+  });
+
+  const loadLogoFile = (file: File) => {
+    readImageFile(
+      file,
+      (img) => {
+        img.dataset.fileName = file.name;
+        applyLogoOverlayPatch({ image: img, enabled: true });
+        showToast(`ロゴ画像「${file.name}」を読み込みました`);
+      },
+      () => {
+        showToast('画像ファイル（PNG / JPEG / WebP / SVG 等）を選択してください');
+      }
+    );
+  };
+
+  btnUploadLogo.addEventListener('click', () => inputLogoImage.click());
+  inputLogoImage.addEventListener('change', (e) => {
+    const files = (e.target as HTMLInputElement).files;
+    if (files && files.length > 0) {
+      loadLogoFile(files[0]);
+    }
+  });
+  setupDropZone(logoUploadBox, loadLogoFile);
+
+  btnClearLogo.addEventListener('click', () => {
+    inputLogoImage.value = '';
+    applyLogoOverlayPatch({ image: null });
+    showToast('ロゴ画像を解除しました');
+  });
+
+  selectLogoAnimation.addEventListener('change', () => {
+    applyLogoOverlayPatch({ animation: selectLogoAnimation.value as LogoOverlayAnimation });
+  });
+
+  inputLogoTransition.addEventListener('input', () => {
+    applyLogoOverlayPatch({ transitionRatio: parseInt(inputLogoTransition.value, 10) / 100 });
+  });
+
+  inputLogoScale.addEventListener('input', () => {
+    applyLogoOverlayPatch({ scale: parseInt(inputLogoScale.value, 10) / 100 });
+  });
+
+  inputLogoOffsetX.addEventListener('input', () => {
+    applyLogoOverlayPatch({ offsetX: parseInt(inputLogoOffsetX.value, 10) / 100 });
+  });
+
+  inputLogoOffsetY.addEventListener('input', () => {
+    applyLogoOverlayPatch({ offsetY: parseInt(inputLogoOffsetY.value, 10) / 100 });
+  });
+
+  btnResetLogoPos.addEventListener('click', () => {
+    const updated = stateStore.resetLogoOverlayPosition();
+    engine.setLogoOverlay(updated);
+    syncLogoOverlayToUI();
+  });
+
+  inputLogoStart.addEventListener('input', () => {
+    applyLogoOverlayPatch({ startProgress: parseInt(inputLogoStart.value, 10) / 100 });
+  });
+
+  inputLogoEnd.addEventListener('input', () => {
+    applyLogoOverlayPatch({ endProgress: parseInt(inputLogoEnd.value, 10) / 100 });
+  });
+
+  inputLogoHasShadow.addEventListener('change', () => {
+    applyLogoOverlayPatch({ hasShadow: inputLogoHasShadow.checked });
+  });
+
+  logoShadowColorInput.addEventListener('input', () => {
+    applyLogoOverlayPatch({ shadowColor: logoShadowColorInput.value });
+  });
+
+  inputLogoShadowBlur.addEventListener('input', () => {
+    applyLogoOverlayPatch({ shadowBlur: parseInt(inputLogoShadowBlur.value, 10) });
+  });
+
   // 出力設定: 解像度 / FPS / デュレーション
   selectResolution.addEventListener('change', () => {
     const resKey = selectResolution.value as ResolutionPreset;
@@ -612,13 +846,15 @@ function setupEventListeners() {
   btnShareUrl.addEventListener('click', () => {
     const preset = stateStore.getCurrentPreset();
     const options = stateStore.getCurrentOptions();
+    const logoOverlay = stateStore.getLogoOverlay();
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const shareUrl = buildShareUrl(baseUrl, preset, {
       presetId: stateStore.getCurrentPresetId(),
       options,
       output: getCurrentOutputSettings(),
+      logoOverlay,
     });
-    const includesCustomImage = hasSelectedCustomImage(preset, options);
+    const includesCustomImage = hasSelectedCustomImage(preset, options, logoOverlay);
 
     navigator.clipboard
       .writeText(shareUrl)
@@ -761,7 +997,8 @@ async function startExport() {
         exportStatusText.textContent = ev.statusMessage;
         exportPercentText.textContent = `${ev.progressPercent}%`;
         exportProgressBar.style.width = `${ev.progressPercent}%`;
-      }
+      },
+      stateStore.getLogoOverlay()
     );
 
     if (exportPipeline !== pipeline) {
