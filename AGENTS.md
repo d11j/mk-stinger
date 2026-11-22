@@ -13,6 +13,7 @@
   * **エンコード**: WebCodecs API (`VideoEncoder`, `VideoFrame`)
   * **多重化 (Muxing)**: `mediabunny` (VP9 with Alpha)
   * **UI**: Vanilla CSS (Cyber/Studio ダークテーマ), Lucide アイコン, `canvas-confetti`
+  * **テスト / 品質管理**: Vitest (`@napi-rs/canvas`), ESLint, Prettier
 
 ---
 
@@ -50,6 +51,20 @@ OBS のトラックマット仕様に準拠：
   * 例: `stinger_hex_1080p_60fps.webm`
 * **特徴**:
   * トラックマット専用化により移行ポイントのフレーム数入力が不要となったため、プリセット・解像度・FPS が一目で分かるシンプルな命名に統一。
+
+### 2.4. セッション内状態管理 & 設定 URL 共有 (`PresetStateStore.ts`, `urlShare.ts`)
+* **プリセット別ドラフトとカラー引き継ぎ (`src/state/PresetStateStore.ts`)**:
+  * 同一セッション内でプリセットごとの編集ドラフト（固有パラメータやアップロード済みカスタム画像など）をメモリ内に保持し、プリセット切替時に復元する。
+  * ユーザーがカラー変更（個別色編集・テーマ適用・ランダム配色）を行った場合、切替先プリセットへも現在のカラーパレットを引き継ぐ。「初期色」リセットを実行すると引き継ぎが解除される。
+* **設定 URL 共有・復元 (`src/state/urlShare.ts`)**:
+  * `buildShareUrl()` で `preset` およびデフォルト値との差分パラメータのみを URL クエリ化（共通カラー、ディテール、プリセット固有 `p.<key>`、出力設定）。`image` 型のパラメータは URL 共有対象外。
+  * `parseShareUrl()` で未知キー・不正値を無視しつつ、スキーマの `min`/`max`/`step` に沿って安全にクランプ復元する。復元後にカスタム画像フィールドが有効な場合は再選択案内を表示する。
+
+### 2.5. カラーシステム & スキーマ駆動パラメータ UI (`colorThemes.ts`, `PresetParamsPanel.ts`)
+* **カラー設定 (`src/ui/colorThemes.ts`)**:
+  * `glowColor` は `borderColor` から独立して設定可能。8種の定番テーマプリセット（Tokyo Night, Dracula, Catppuccin, Nord, Synthwave, Gruvbox, Gaming Red, Monochrome）と、HSL ハーモニー理論に基づくランダム配色生成を提供。
+* **スキーマ駆動 UI (`src/ui/PresetParamsPanel.ts`)**:
+  * 各 `PresetPlugin.params`（`range` / `boolean` / `select` / `image` と `visibleWhen` 条件）から固有パラメータ UI を動的生成する。`image` フィールドはファイル選択およびドラッグ＆ドロップに対応。
 
 ---
 
@@ -166,9 +181,13 @@ OBS のトラックマット仕様に準拠：
 ```
 mk-stinger/
 ├── index.html                   // メインHTML（スタジオUI・タイムライン・OBS設定カード・モーダル）
-├── package.json                 // 依存関係（mediabunny, lucide, canvas-confetti）
+├── package.json                 // 依存関係・テスト/Lint/Formatスクリプト（mediabunny, vitest 等）
 ├── tsconfig.json                // TS設定
 ├── vite.config.ts               // Vite設定
+├── vitest.config.ts             // Vitest設定
+├── eslint.config.js             // ESLint設定
+├── .prettierrc                  // Prettier設定
+├── README.md                    // プロジェクト概要・起動方法・OBS設定・利用条件
 ├── SPEC.md                      // プロジェクト仕様書
 ├── AGENTS.md                    // 本ドキュメント（開発知見・ガイド）
 └── src/
@@ -178,7 +197,8 @@ mk-stinger/
     ├── engine/
     │   ├── AnimationEngine.ts   // 決定論的レンダリングエンジン & 離散再生コントローラ
     │   ├── utils/
-    │   │   └── easing.ts        // 共通イージング関数ユーティリティ
+    │   │   ├── easing.ts        // 共通イージング関数ユーティリティ
+    │   │   └── __tests__/       // イージングのユニットテスト
     │   └── presets/
     │       ├── index.ts         // プリセット一覧レジストリ
     │       ├── HexAnimation.ts  // 必須要件のHEXハニカム充填
@@ -186,12 +206,20 @@ mk-stinger/
     │       ├── SpriteWipeAnimation.ts // デコレーションラインワイプ（1本線＋星/ハート/画像スプライト装飾）
     │       ├── HyperJumpAnimation.ts // ハイパージャンプ（収縮リング＋中心フラッシュ展開）
     │       ├── SlashAnimation.ts// 斜めスライス＆スピードライン
-    │       └── GlitchAnimation.ts// サイバーグリッド
+    │       ├── GlitchAnimation.ts// サイバーグリッド
+    │       └── __tests__/       // 全プリセットの境界フレーム・renderMatte検証テスト
+    ├── state/
+    │   ├── PresetStateStore.ts  // セッション内のプリセット別ドラフト & カラー引き継ぎ管理
+    │   ├── urlShare.ts          // URL クエリ形式での設定共有・安全復元
+    │   └── __tests__/           // 状態管理・URL共有のユニットテスト
     ├── ui/
     │   ├── PresetParamsPanel.ts // params スキーマ駆動の動的UI生成コンポーネント
-    │   └── fileHelpers.ts       // 画像読み込み・ドラッグ＆ドロップ共通ヘルパー
+    │   ├── colorThemes.ts       // カラーテーマプリセット & HSL ランダム配色生成
+    │   ├── fileHelpers.ts       // 画像読み込み・ドラッグ＆ドロップ共通ヘルパー
+    │   └── __tests__/           // カラーテーマ・ランダム配色のユニットテスト
     ├── renderer/
-    │   └── TrackMatteRenderer.ts// Side-by-Side (3840x1080) マスク高速合成
+    │   ├── TrackMatteRenderer.ts// Side-by-Side (3840x1080) マスク高速合成
+    │   └── __tests__/           // トラックマット合成のユニットテスト
     └── encoder/
         └── VideoExportPipeline.ts// WebCodecs + mediabunny によるトラックマット WebM 書き出し
 ```
