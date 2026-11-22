@@ -1,4 +1,16 @@
-import { PresetParamField, PresetPlugin, RESOLUTIONS, ResolutionPreset } from '../types';
+import {
+  LogoOverlayAnimation,
+  LogoOverlayOptions,
+  PresetParamField,
+  PresetPlugin,
+  RESOLUTIONS,
+  ResolutionPreset,
+} from '../types';
+import {
+  DEFAULT_LOGO_OVERLAY_OPTIONS,
+  LOGO_OVERLAY_ANIMATIONS,
+  LOGO_OVERLAY_MIN_DURATION,
+} from '../engine/LogoOverlayRenderer';
 
 export interface ShareableOutputSettings {
   resolutionKey: ResolutionPreset;
@@ -18,6 +30,7 @@ export interface ShareableAppState {
   presetId: string;
   options: Record<string, any>;
   output: ShareableOutputSettings;
+  logoOverlay?: LogoOverlayOptions;
 }
 
 export interface ParsedShareState {
@@ -26,6 +39,7 @@ export interface ParsedShareState {
   options: Record<string, any>;
   isColorCustomized: boolean;
   output: ShareableOutputSettings;
+  logoOverlay: LogoOverlayOptions;
   needsCustomImageNotice: boolean;
 }
 
@@ -48,6 +62,7 @@ const KNOWN_FIXED_PARAM_KEYS = new Set<string>([
   'bw',
   'glowOn',
   'glowBlur',
+  'logo',
   ...COLOR_PARAM_MAP.map((entry) => entry.paramKey),
 ]);
 
@@ -91,16 +106,19 @@ function isFieldVisible(field: PresetParamField<any>, options: Record<string, an
 }
 
 /**
- * 現在のプリセット設定でカスタム画像が選択されているかを判定する
+ * 現在のプリセットまたはロゴオーバーレイ設定でカスタム画像が選択されているかを判定する
  */
 export function hasSelectedCustomImage(
   preset: PresetPlugin<any>,
-  options: Record<string, any>
+  options: Record<string, any>,
+  logoOverlay?: LogoOverlayOptions
 ): boolean {
-  return preset.params.some(
+  const hasPresetImage = preset.params.some(
     (field) =>
       field.type === 'image' && isFieldVisible(field, options) && Boolean(options[field.key])
   );
+  const hasLogoImage = Boolean(logoOverlay?.enabled && logoOverlay?.image);
+  return hasPresetImage || hasLogoImage;
 }
 
 /**
@@ -181,6 +199,44 @@ export function buildShareUrl(
     params.set('br', String(state.output.bitrateMbps));
   }
 
+  // ロゴオーバーレイ設定（有効時のみ、image 自体は URL 共有対象外）
+  const logo = state.logoOverlay;
+  if (logo?.enabled) {
+    params.set('logo', '1');
+    if (logo.animation !== DEFAULT_LOGO_OVERLAY_OPTIONS.animation) {
+      params.set('logo.anim', logo.animation);
+    }
+    if (Math.abs(logo.scale - DEFAULT_LOGO_OVERLAY_OPTIONS.scale) > 1e-6) {
+      params.set('logo.scale', logo.scale.toFixed(2));
+    }
+    if (Math.abs(logo.offsetX - DEFAULT_LOGO_OVERLAY_OPTIONS.offsetX) > 1e-6) {
+      params.set('logo.x', logo.offsetX.toFixed(2));
+    }
+    if (Math.abs(logo.offsetY - DEFAULT_LOGO_OVERLAY_OPTIONS.offsetY) > 1e-6) {
+      params.set('logo.y', logo.offsetY.toFixed(2));
+    }
+    if (Math.abs(logo.startProgress - DEFAULT_LOGO_OVERLAY_OPTIONS.startProgress) > 1e-6) {
+      params.set('logo.start', logo.startProgress.toFixed(2));
+    }
+    if (Math.abs(logo.endProgress - DEFAULT_LOGO_OVERLAY_OPTIONS.endProgress) > 1e-6) {
+      params.set('logo.end', logo.endProgress.toFixed(2));
+    }
+    if (Math.abs(logo.transitionRatio - DEFAULT_LOGO_OVERLAY_OPTIONS.transitionRatio) > 1e-6) {
+      params.set('logo.trans', logo.transitionRatio.toFixed(2));
+    }
+    if (logo.hasShadow !== DEFAULT_LOGO_OVERLAY_OPTIONS.hasShadow) {
+      params.set('logo.shadow', logo.hasShadow ? '1' : '0');
+    }
+    const normShadowColor = normalizeHexColor(logo.shadowColor);
+    const normDefaultShadowColor = normalizeHexColor(DEFAULT_LOGO_OVERLAY_OPTIONS.shadowColor);
+    if (normShadowColor && normShadowColor !== normDefaultShadowColor) {
+      params.set('logo.shadowColor', stripHash(normShadowColor));
+    }
+    if (logo.shadowBlur !== DEFAULT_LOGO_OVERLAY_OPTIONS.shadowBlur) {
+      params.set('logo.shadowBlur', String(logo.shadowBlur));
+    }
+  }
+
   url.search = params.toString();
   url.hash = '';
   return url.toString();
@@ -198,7 +254,7 @@ export function parseShareUrl(
 
   let hasShareParams = false;
   for (const key of params.keys()) {
-    if (KNOWN_FIXED_PARAM_KEYS.has(key) || key.startsWith('p.')) {
+    if (KNOWN_FIXED_PARAM_KEYS.has(key) || key.startsWith('p.') || key.startsWith('logo.')) {
       hasShareParams = true;
       break;
     }
@@ -307,10 +363,112 @@ export function parseShareUrl(
     }
   }
 
-  // 復元後の設定で画像アップロード欄が有効になっている場合は再選択案内を出す
+  // 復元後の設定で画像アップロード欄またはロゴオーバーレイが有効になっている場合は再選択案内を出す
+  const logoOverlay: LogoOverlayOptions = { ...DEFAULT_LOGO_OVERLAY_OPTIONS };
+  if (hasShareParams) {
+    const rawLogo = params.get('logo');
+    if (rawLogo !== null) {
+      const parsedBool = parseBooleanParam(rawLogo);
+      if (parsedBool !== null) {
+        logoOverlay.enabled = parsedBool;
+      }
+    }
+
+    const rawAnim = params.get('logo.anim');
+    if (rawAnim && LOGO_OVERLAY_ANIMATIONS.some((a) => a.value === rawAnim)) {
+      logoOverlay.animation = rawAnim as LogoOverlayAnimation;
+    }
+
+    const rawScale = params.get('logo.scale');
+    if (rawScale !== null) {
+      const num = Number(rawScale);
+      if (Number.isFinite(num)) {
+        logoOverlay.scale = clampAndStep(num, 0.1, 0.8, 0.01);
+      }
+    }
+
+    const rawX = params.get('logo.x');
+    if (rawX !== null) {
+      const num = Number(rawX);
+      if (Number.isFinite(num)) {
+        logoOverlay.offsetX = clampAndStep(num, -0.5, 0.5, 0.01);
+      }
+    }
+
+    const rawY = params.get('logo.y');
+    if (rawY !== null) {
+      const num = Number(rawY);
+      if (Number.isFinite(num)) {
+        logoOverlay.offsetY = clampAndStep(num, -0.5, 0.5, 0.01);
+      }
+    }
+
+    const rawStart = params.get('logo.start');
+    if (rawStart !== null) {
+      const num = Number(rawStart);
+      if (Number.isFinite(num)) {
+        logoOverlay.startProgress = clampAndStep(num, 0.0, 0.9, 0.01);
+      }
+    }
+
+    const rawEnd = params.get('logo.end');
+    if (rawEnd !== null) {
+      const num = Number(rawEnd);
+      if (Number.isFinite(num)) {
+        logoOverlay.endProgress = clampAndStep(num, 0.1, 1.0, 0.01);
+      }
+    }
+
+    if (logoOverlay.endProgress < logoOverlay.startProgress + LOGO_OVERLAY_MIN_DURATION) {
+      logoOverlay.endProgress = Math.min(
+        1,
+        Number((logoOverlay.startProgress + LOGO_OVERLAY_MIN_DURATION).toFixed(2))
+      );
+      if (logoOverlay.endProgress - logoOverlay.startProgress < LOGO_OVERLAY_MIN_DURATION) {
+        logoOverlay.startProgress = Math.max(
+          0,
+          Number((logoOverlay.endProgress - LOGO_OVERLAY_MIN_DURATION).toFixed(2))
+        );
+      }
+    }
+
+    const rawTrans = params.get('logo.trans');
+    if (rawTrans !== null) {
+      const num = Number(rawTrans);
+      if (Number.isFinite(num)) {
+        logoOverlay.transitionRatio = clampAndStep(num, 0.05, 0.5, 0.01);
+      }
+    }
+
+    const rawShadow = params.get('logo.shadow');
+    if (rawShadow !== null) {
+      const parsedBool = parseBooleanParam(rawShadow);
+      if (parsedBool !== null) {
+        logoOverlay.hasShadow = parsedBool;
+      }
+    }
+
+    const rawShadowColor = params.get('logo.shadowColor');
+    if (rawShadowColor !== null) {
+      const normalized = normalizeHexColor(rawShadowColor);
+      if (normalized) {
+        logoOverlay.shadowColor = normalized;
+      }
+    }
+
+    const rawShadowBlur = params.get('logo.shadowBlur');
+    if (rawShadowBlur !== null) {
+      const num = Number(rawShadowBlur);
+      if (Number.isFinite(num)) {
+        logoOverlay.shadowBlur = clampAndStep(num, 0, 50, 1);
+      }
+    }
+  }
+
   const needsCustomImageNotice =
     hasShareParams &&
-    preset.params.some((field) => field.type === 'image' && isFieldVisible(field, options));
+    (preset.params.some((field) => field.type === 'image' && isFieldVisible(field, options)) ||
+      logoOverlay.enabled);
 
   return {
     hasShareParams,
@@ -318,6 +476,7 @@ export function parseShareUrl(
     options,
     isColorCustomized,
     output,
+    logoOverlay,
     needsCustomImageNotice,
   };
 }

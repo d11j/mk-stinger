@@ -48,6 +48,32 @@ export interface SpriteWipePresetOptions extends BasePresetOptions {
   customImage: HTMLImageElement | null; // アップロード画像（永続化なし）
 }
 
+export type LogoOverlayAnimation = 'pop' | 'fade' | 'zoom' | 'slide-up' | 'slide-down';
+
+export interface LogoOverlayOptions {
+  enabled: boolean;
+  image: HTMLImageElement | null;
+  animation: LogoOverlayAnimation;
+  /** 画面高さに対するロゴ長辺の比率 (0.10 〜 0.80) */
+  scale: number;
+  /** X 位置オフセット (-0.50 〜 +0.50, 画面幅比) */
+  offsetX: number;
+  /** Y 位置オフセット (-0.50 〜 +0.50, 画面高さ比) */
+  offsetY: number;
+  /** 表示開始タイミング (0.00 〜 0.90) */
+  startProgress: number;
+  /** 表示終了タイミング (0.10 〜 1.00) */
+  endProgress: number;
+  /** 表示区間に対するイン/アウト遷移の片側比率 (0.05 〜 0.50) */
+  transitionRatio: number;
+  /** シャドウ・グロー効果の有効化 */
+  hasShadow: boolean;
+  /** シャドウ・グロー色 */
+  shadowColor: string;
+  /** シャドウ・グローぼかし量 (1080p 基準 px: 0 〜 50) */
+  shadowBlur: number;
+}
+
 export interface ParamVisibilityCondition<T> {
   key: keyof T & string;
   equals: unknown;

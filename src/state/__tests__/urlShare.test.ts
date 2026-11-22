@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PRESET_MAP } from '../../engine/presets';
+import { DEFAULT_LOGO_OVERLAY_OPTIONS } from '../../engine/LogoOverlayRenderer';
+import { LogoOverlayOptions } from '../../types';
 import {
   buildShareUrl,
   DEFAULT_OUTPUT_SETTINGS,
@@ -158,5 +160,90 @@ describe('urlShare', () => {
     expect(restored.options.spriteType).toBe('custom');
     expect(restored.options.customImage).toBeNull();
     expect(restored.needsCustomImageNotice).toBe(true);
+  });
+
+  it('ロゴオーバーレイが OFF のときはロゴ関連パラメータを URL に出力しないこと', () => {
+    const hexPreset = PRESET_MAP.get('hex')!;
+    const url = buildShareUrl(BASE_URL, hexPreset, {
+      presetId: 'hex',
+      options: { ...hexPreset.defaultOptions },
+      output: { ...DEFAULT_OUTPUT_SETTINGS },
+      logoOverlay: {
+        ...DEFAULT_LOGO_OVERLAY_OPTIONS,
+        enabled: false,
+        scale: 0.6,
+        animation: 'zoom',
+      },
+    });
+
+    expect(url).toBe('https://example.com/mk-stinger/?preset=hex');
+  });
+
+  it('ロゴオーバーレイ設定の差分が URL にエンコードされ往復復元できること（画像本体は除外＋再選択通知）', () => {
+    const hexPreset = PRESET_MAP.get('hex')!;
+    const mockLogo = { src: 'data:image/png;base64,logo' } as HTMLImageElement;
+    const customLogo: LogoOverlayOptions = {
+      enabled: true,
+      image: mockLogo,
+      animation: 'slide-up',
+      scale: 0.48,
+      offsetX: -0.15,
+      offsetY: 0.12,
+      startProgress: 0.15,
+      endProgress: 0.85,
+      transitionRatio: 0.3,
+      hasShadow: false,
+      shadowColor: '#ff00aa',
+      shadowBlur: 32,
+    };
+
+    expect(hasSelectedCustomImage(hexPreset, hexPreset.defaultOptions, customLogo)).toBe(true);
+
+    const url = buildShareUrl(BASE_URL, hexPreset, {
+      presetId: 'hex',
+      options: { ...hexPreset.defaultOptions },
+      output: { ...DEFAULT_OUTPUT_SETTINGS },
+      logoOverlay: customLogo,
+    });
+
+    const parsedUrl = new URL(url);
+    expect(parsedUrl.searchParams.get('logo')).toBe('1');
+    expect(parsedUrl.searchParams.get('logo.anim')).toBe('slide-up');
+    expect(parsedUrl.searchParams.get('logo.scale')).toBe('0.48');
+    expect(parsedUrl.searchParams.get('logo.x')).toBe('-0.15');
+    expect(parsedUrl.searchParams.get('logo.y')).toBe('0.12');
+    expect(parsedUrl.searchParams.get('logo.start')).toBe('0.15');
+    expect(parsedUrl.searchParams.get('logo.end')).toBe('0.85');
+    expect(parsedUrl.searchParams.get('logo.trans')).toBe('0.30');
+    expect(parsedUrl.searchParams.get('logo.shadow')).toBe('0');
+    expect(parsedUrl.searchParams.get('logo.shadowColor')).toBe('ff00aa');
+    expect(parsedUrl.searchParams.get('logo.shadowBlur')).toBe('32');
+
+    const restored = parseShareUrl(parsedUrl.search, PRESET_MAP, 'hex');
+    expect(restored.hasShareParams).toBe(true);
+    expect(restored.needsCustomImageNotice).toBe(true);
+    expect(restored.logoOverlay).toEqual({
+      ...customLogo,
+      image: null,
+    });
+  });
+
+  it('ロゴオーバーレイの不正な値や逆転タイミングを安全にフォールバック・クランプ・補正すること', () => {
+    const restored = parseShareUrl(
+      '?preset=hex&logo=1&logo.anim=invalid&logo.scale=5&logo.x=-9&logo.y=9&logo.start=0.80&logo.end=0.30&logo.trans=0.01&logo.shadowColor=zzz&logo.shadowBlur=999',
+      PRESET_MAP,
+      'hex'
+    );
+
+    expect(restored.logoOverlay.enabled).toBe(true);
+    expect(restored.logoOverlay.animation).toBe(DEFAULT_LOGO_OVERLAY_OPTIONS.animation);
+    expect(restored.logoOverlay.scale).toBe(0.8);
+    expect(restored.logoOverlay.offsetX).toBe(-0.5);
+    expect(restored.logoOverlay.offsetY).toBe(0.5);
+    expect(restored.logoOverlay.startProgress).toBe(0.8);
+    expect(restored.logoOverlay.endProgress).toBe(0.85);
+    expect(restored.logoOverlay.transitionRatio).toBe(0.05);
+    expect(restored.logoOverlay.shadowColor).toBe(DEFAULT_LOGO_OVERLAY_OPTIONS.shadowColor);
+    expect(restored.logoOverlay.shadowBlur).toBe(50);
   });
 });

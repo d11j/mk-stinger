@@ -53,18 +53,28 @@ OBS のトラックマット仕様に準拠：
   * トラックマット専用化により移行ポイントのフレーム数入力が不要となったため、プリセット・解像度・FPS が一目で分かるシンプルな命名に統一。
 
 ### 2.4. セッション内状態管理 & 設定 URL 共有 (`PresetStateStore.ts`, `urlShare.ts`)
-* **プリセット別ドラフトとカラー引き継ぎ (`src/state/PresetStateStore.ts`)**:
+* **プリセット別ドラフト・カラー引き継ぎ & 共通ロゴ状態 (`src/state/PresetStateStore.ts`)**:
   * 同一セッション内でプリセットごとの編集ドラフト（固有パラメータやアップロード済みカスタム画像など）をメモリ内に保持し、プリセット切替時に復元する。
   * ユーザーがカラー変更（個別色編集・テーマ適用・ランダム配色）を行った場合、切替先プリセットへも現在のカラーパレットを引き継ぐ。「初期色」リセットを実行すると引き継ぎが解除される。
+  * 全プリセット共通の `logoOverlay`（ロゴ画像参照・アニメーション・サイズ・位置・表示タイミング・シャドウ設定）をプリセット横断で保持し、`updateLogoOverlay()` 内で開始/終了タイミングの逆転防止ガード（最小区間幅 `0.05`）を適用する。
 * **設定 URL 共有・復元 (`src/state/urlShare.ts`)**:
-  * `buildShareUrl()` で `preset` およびデフォルト値との差分パラメータのみを URL クエリ化（共通カラー、ディテール、プリセット固有 `p.<key>`、出力設定）。`image` 型のパラメータは URL 共有対象外。
-  * `parseShareUrl()` で未知キー・不正値を無視しつつ、スキーマの `min`/`max`/`step` に沿って安全にクランプ復元する。復元後にカスタム画像フィールドが有効な場合は再選択案内を表示する。
+  * `buildShareUrl()` で `preset` およびデフォルト値との差分パラメータのみを URL クエリ化（共通カラー、ディテール、プリセット固有 `p.<key>`、有効時のロゴオーバーレイ `logo` / `logo.*`、出力設定）。画像ファイル本体（`image` 型の固有パラメータや `logoOverlay.image`）は URL 共有対象外。
+  * `parseShareUrl()` で未知キー・不正値を無視しつつ、スキーマおよび各設定の `min`/`max`/`step` に沿って安全にクランプ復元（`logo.start` / `logo.end` の逆転補正含む）する。復元後にカスタム画像フィールドまたはロゴオーバーレイが有効な場合は再選択案内を表示する。
 
 ### 2.5. カラーシステム & スキーマ駆動パラメータ UI (`colorThemes.ts`, `PresetParamsPanel.ts`)
 * **カラー設定 (`src/ui/colorThemes.ts`)**:
   * `glowColor` は `borderColor` から独立して設定可能。8種の定番テーマプリセット（Tokyo Night, Dracula, Catppuccin, Nord, Synthwave, Gruvbox, Gaming Red, Monochrome）と、HSL ハーモニー理論に基づくランダム配色生成を提供。
 * **スキーマ駆動 UI (`src/ui/PresetParamsPanel.ts`)**:
   * 各 `PresetPlugin.params`（`range` / `boolean` / `select` / `image` と `visibleWhen` 条件）から固有パラメータ UI を動的生成する。`image` フィールドはファイル選択およびドラッグ＆ドロップに対応。
+
+### 2.6. ロゴ画像オーバーレイレイヤー (`LogoOverlayRenderer.ts`)
+* **決定論的合成とプレビュー/書き出し一致**:
+  * プレビュー側（`AnimationEngine.ts` の通常表示および `side_by_side` 左半分の `bufferCtx`）と書き出し側（`VideoExportPipeline.ts` の `animCtx`）の双方で、`preset.render(...)` の直後に `renderLogoOverlay(...)` を呼び出し、見た目とタイミングを完全一致させている。
+  * トラックマットマスク側（`matte` モード、`side_by_side` 右半分、`TrackMatteRenderer` の `maskCtx`）には一切描画せず、シーン遷移マスクへ干渉させない。
+* **境界非表示・解像度スケーリング・テスト互換**:
+  * `computeLogoOverlayState()` で `progress <= startProgress` または `progress >= endProgress` のフレームを常に `visible: false` とし、`progress = 0.0 / 1.0` でのロゴ残留を防止。
+  * ロゴサイズは画像のアスペクト比を維持して長辺を `height * scale` にフィットさせ、シャドウぼかし量は `shadowBlur * (height / 1080)` で解像度スケーリングする。
+  * `renderLogoOverlay()` 内の画像寸法取得は `img.naturalWidth || img.width` フォールバックを持ち、ブラウザの `HTMLImageElement` と Vitest (`@napi-rs/canvas`) 上のオフスクリーン `Canvas` の双方でそのままテスト可能としている。
 
 ---
 
@@ -196,6 +206,8 @@ mk-stinger/
     ├── types.ts                 // 型定義（PresetPlugin, ExportConfig 等）
     ├── engine/
     │   ├── AnimationEngine.ts   // 決定論的レンダリングエンジン & 離散再生コントローラ
+    │   ├── LogoOverlayRenderer.ts // 全プリセット共通の決定論的ロゴ画像オーバーレイ描画
+    │   ├── __tests__/           // ロゴオーバーレイ描画のユニットテスト
     │   ├── utils/
     │   │   ├── easing.ts        // 共通イージング関数ユーティリティ
     │   │   └── __tests__/       // イージングのユニットテスト
@@ -209,7 +221,7 @@ mk-stinger/
     │       ├── GlitchAnimation.ts// サイバーグリッド
     │       └── __tests__/       // 全プリセットの境界フレーム・renderMatte検証テスト
     ├── state/
-    │   ├── PresetStateStore.ts  // セッション内のプリセット別ドラフト & カラー引き継ぎ管理
+    │   ├── PresetStateStore.ts  // プリセット別ドラフト・カラー引き継ぎ & 共通ロゴ状態管理
     │   ├── urlShare.ts          // URL クエリ形式での設定共有・安全復元
     │   └── __tests__/           // 状態管理・URL共有のユニットテスト
     ├── ui/
