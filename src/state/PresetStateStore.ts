@@ -130,4 +130,29 @@ export class PresetStateStore {
     this.sharedPalette = null;
     this.activeColorThemeId = null;
   }
+
+  /**
+   * 共有 URL 等から復元された設定を適用する。
+   */
+  public applyRestoredState(
+    presetId: string,
+    restoredOptions: Record<string, any>,
+    isColorCustomized: boolean
+  ): { preset: PresetPlugin<any>; options: Record<string, any> } | null {
+    const preset = this.presets.get(presetId);
+    if (!preset) {
+      return null;
+    }
+
+    const draft: Record<string, any> = {
+      ...(preset.defaultOptions as Record<string, any>),
+      ...restoredOptions,
+    };
+    this.drafts.set(presetId, draft);
+    this.currentPresetId = presetId;
+    this.sharedPalette = isColorCustomized ? extractPaletteFromOptions(draft) : null;
+    this.activeColorThemeId = null;
+
+    return { preset, options: draft };
+  }
 }

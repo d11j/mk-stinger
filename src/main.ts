@@ -7,6 +7,12 @@ import { PresetParamsPanel } from './ui/PresetParamsPanel';
 import { readImageFile, setupDropZone } from './ui/fileHelpers';
 import { COLOR_THEMES, ColorPalette, generateRandomColorPalette } from './ui/colorThemes';
 import { PresetStateStore } from './state/PresetStateStore';
+import {
+  buildShareUrl,
+  hasSelectedCustomImage,
+  parseShareUrl,
+  ShareableOutputSettings,
+} from './state/urlShare';
 
 // DOM 要素の取得
 const previewCanvas = document.getElementById('previewCanvas') as HTMLCanvasElement;
@@ -83,6 +89,7 @@ const exportPercentText = document.getElementById('exportPercentText') as HTMLEl
 const exportProgressBar = document.getElementById('exportProgressBar') as HTMLElement;
 const exportDetailsBox = document.getElementById('exportDetailsBox') as HTMLElement;
 
+const btnShareUrl = document.getElementById('btnShareUrl') as HTMLButtonElement;
 const btnOpenLicense = document.getElementById('btnOpenLicense') as HTMLButtonElement;
 const btnLicenseSummaryLink = document.getElementById('btnLicenseSummaryLink') as HTMLButtonElement;
 const btnExportLicenseLink = document.getElementById('btnExportLicenseLink') as HTMLButtonElement;
@@ -121,8 +128,43 @@ const presetParamsPanel = new PresetParamsPanel(presetSpecificControls, {
   onToast: showToast,
 });
 
+function getCurrentOutputSettings(): ShareableOutputSettings {
+  return {
+    resolutionKey: selectResolution.value as ResolutionPreset,
+    fps: parseInt(selectFps.value, 10) as 30 | 60,
+    durationSec: parseFloat(inputDuration.value),
+    bitrateMbps: parseInt(inputBitrate.value, 10),
+  };
+}
+
+function applyOutputSettingsToUIAndEngine(output: ShareableOutputSettings) {
+  selectResolution.value = output.resolutionKey;
+  selectFps.value = String(output.fps);
+  inputDuration.value = output.durationSec.toFixed(1);
+  valDuration.textContent = `${output.durationSec.toFixed(1)} 秒`;
+  inputBitrate.value = String(output.bitrateMbps);
+  valBitrate.textContent = `${output.bitrateMbps} Mbps`;
+
+  const res = RESOLUTIONS[output.resolutionKey];
+  engine.resize(res.width, res.height);
+  engine.setConfig(output.fps, output.durationSec);
+}
+
 // 画面読み込み時の初期UIセットアップ
 function init() {
+  const restored = parseShareUrl(window.location.search, PRESET_MAP, 'hex');
+  if (restored.hasShareParams) {
+    const applied = stateStore.applyRestoredState(
+      restored.presetId,
+      restored.options,
+      restored.isColorCustomized
+    );
+    if (applied) {
+      engine.setPreset(applied.preset, applied.options);
+    }
+    applyOutputSettingsToUIAndEngine(restored.output);
+  }
+
   renderPresetCards();
   renderColorThemes();
   syncOptionsToUI();
@@ -131,9 +173,18 @@ function init() {
     onFrameUpdate: handleFrameUpdate,
     onPlayStateChange: handlePlayStateChange,
   });
+  updateCanvasResBadge();
   updateObsPanel();
   setupEventListeners();
   setupKeyboardShortcuts();
+
+  if (restored.hasShareParams) {
+    showToast(
+      restored.needsCustomImageNotice
+        ? 'URLから設定を読み込みました（※カスタム画像は再選択してください）'
+        : 'URLから設定を読み込みました'
+    );
+  }
 }
 
 // プリセットカードのレンダリング
@@ -555,6 +606,32 @@ function setupEventListeners() {
     isExporting = false;
     btnStartExport.disabled = false;
     hideExportModal();
+  });
+
+  // 設定URLをコピー
+  btnShareUrl.addEventListener('click', () => {
+    const preset = stateStore.getCurrentPreset();
+    const options = stateStore.getCurrentOptions();
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    const shareUrl = buildShareUrl(baseUrl, preset, {
+      presetId: stateStore.getCurrentPresetId(),
+      options,
+      output: getCurrentOutputSettings(),
+    });
+    const includesCustomImage = hasSelectedCustomImage(preset, options);
+
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => {
+        showToast(
+          includesCustomImage
+            ? '設定URLをコピーしました（※カスタム画像はURLに含まれません）'
+            : '設定URLをコピーしました！'
+        );
+      })
+      .catch(() => {
+        showToast('URLのコピーに失敗しました');
+      });
   });
 
   // ライセンス・利用条件モーダル

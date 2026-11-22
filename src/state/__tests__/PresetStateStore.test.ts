@@ -153,4 +153,31 @@ describe('PresetStateStore', () => {
     expect(store.getCurrentPresetId()).toBe(ALL_PRESETS[0].id);
     expect(store.getCurrentOptions().borderWidth).toBe(7);
   });
+
+  it('applyRestoredState で復元したプリセット・オプション・色引き継ぎ状態が正しく反映される', () => {
+    const store = new PresetStateStore(PRESET_MAP, 'hex');
+
+    const restored = store.applyRestoredState(
+      'sprite-wipe',
+      {
+        primaryColor: '#102030',
+        secondaryColor: '#203040',
+        accentColor: '#304050',
+        borderColor: '#405060',
+        glowColor: '#506070',
+        spriteType: 'diamond',
+      },
+      true
+    );
+
+    expect(restored).not.toBeNull();
+    expect(store.getCurrentPresetId()).toBe('sprite-wipe');
+    expect(store.getCurrentOptions().spriteType).toBe('diamond');
+    expect(store.hasSharedColorPalette()).toBe(true);
+
+    // URL からカスタム色を復元した場合は別プリセット切替時にも色が引き継がれる
+    const switched = store.selectPreset('slash');
+    expect(switched!.options.primaryColor).toBe('#102030');
+    expect(switched!.options.glowColor).toBe('#506070');
+  });
 });
