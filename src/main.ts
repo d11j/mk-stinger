@@ -5,6 +5,7 @@ import { ExportConfig, RESOLUTIONS, ResolutionPreset } from './types';
 import { VideoExportPipeline } from './encoder/VideoExportPipeline';
 import { PresetParamsPanel } from './ui/PresetParamsPanel';
 import { readImageFile, setupDropZone } from './ui/fileHelpers';
+import { COLOR_THEMES, ColorPalette, generateRandomColorPalette } from './ui/colorThemes';
 
 // DOM 要素の取得
 const previewCanvas = document.getElementById('previewCanvas') as HTMLCanvasElement;
@@ -45,6 +46,10 @@ const primaryColorInput = document.getElementById('primaryColorInput') as HTMLIn
 const secondaryColorInput = document.getElementById('secondaryColorInput') as HTMLInputElement;
 const accentColorInput = document.getElementById('accentColorInput') as HTMLInputElement;
 const borderColorInput = document.getElementById('borderColorInput') as HTMLInputElement;
+const glowColorInput = document.getElementById('glowColorInput') as HTMLInputElement;
+const colorThemeList = document.getElementById('colorThemeList') as HTMLDivElement;
+const btnRandomColors = document.getElementById('btnRandomColors') as HTMLButtonElement;
+const btnResetColors = document.getElementById('btnResetColors') as HTMLButtonElement;
 const inputBorderWidth = document.getElementById('inputBorderWidth') as HTMLInputElement;
 const valBorderWidth = document.getElementById('valBorderWidth') as HTMLElement;
 const inputHasGlow = document.getElementById('inputHasGlow') as HTMLInputElement;
@@ -94,6 +99,7 @@ const toastMessage = document.getElementById('toastMessage') as HTMLElement;
 let currentPresetId = 'hex';
 let currentPreset = PRESET_MAP.get(currentPresetId)!;
 let currentOptions = { ...currentPreset.defaultOptions };
+let activeColorThemeId: string | null = null;
 
 const DEFAULT_EXPORT_DETAILS_TEXT =
   'WebCodecs API により、ブラウザ上で直接高速エンコードを実行しています。';
@@ -116,6 +122,7 @@ const presetParamsPanel = new PresetParamsPanel(presetSpecificControls, {
 // 画面読み込み時の初期UIセットアップ
 function init() {
   renderPresetCards();
+  renderColorThemes();
   syncOptionsToUI();
   presetParamsPanel.render(currentPreset.params, currentOptions);
   engine.init({
@@ -151,6 +158,7 @@ function selectPreset(presetId: string) {
   currentPresetId = presetId;
   currentPreset = preset;
   currentOptions = { ...preset.defaultOptions };
+  activeColorThemeId = null;
 
   engine.setPreset(preset, currentOptions);
   renderPresetCards();
@@ -159,12 +167,69 @@ function selectPreset(presetId: string) {
   updateObsPanel();
 }
 
+// カラーテーマプリセットチップのレンダリング
+function renderColorThemes() {
+  colorThemeList.innerHTML = '';
+  for (const theme of COLOR_THEMES) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'color-theme-chip';
+    btn.dataset.themeId = theme.id;
+    btn.title = `${theme.name} (${theme.reference})`;
+
+    const swatches = document.createElement('span');
+    swatches.className = 'color-theme-swatches';
+    for (const hex of [
+      theme.colors.primaryColor,
+      theme.colors.secondaryColor,
+      theme.colors.accentColor,
+    ]) {
+      const dot = document.createElement('span');
+      dot.className = 'color-theme-dot';
+      dot.style.backgroundColor = hex;
+      swatches.appendChild(dot);
+    }
+
+    const name = document.createElement('span');
+    name.className = 'color-theme-name';
+    name.textContent = theme.name;
+
+    btn.append(swatches, name);
+    btn.addEventListener('click', () => {
+      applyColorPalette(theme.colors, theme.id);
+    });
+    colorThemeList.appendChild(btn);
+  }
+  updateActiveColorThemeUI();
+}
+
+function updateActiveColorThemeUI() {
+  colorThemeList.querySelectorAll<HTMLButtonElement>('.color-theme-chip').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.themeId === activeColorThemeId);
+  });
+}
+
+function applyColorPalette(palette: ColorPalette, themeId: string | null) {
+  currentOptions.primaryColor = palette.primaryColor;
+  currentOptions.secondaryColor = palette.secondaryColor;
+  currentOptions.accentColor = palette.accentColor;
+  currentOptions.borderColor = palette.borderColor;
+  currentOptions.glowColor = palette.glowColor;
+  activeColorThemeId = themeId;
+
+  syncOptionsToUI();
+  engine.updateOptions(currentOptions);
+}
+
 // UIコントロールの値を現在の options に同期
 function syncOptionsToUI() {
   primaryColorInput.value = currentOptions.primaryColor ?? '#6366f1';
   secondaryColorInput.value = currentOptions.secondaryColor ?? '#06b6d4';
   accentColorInput.value = currentOptions.accentColor ?? '#ec4899';
   borderColorInput.value = currentOptions.borderColor ?? '#38bdf8';
+  glowColorInput.value = currentOptions.glowColor ?? currentOptions.borderColor ?? '#38bdf8';
+
+  updateActiveColorThemeUI();
 
   inputBorderWidth.value = String(currentOptions.borderWidth ?? 3);
   valBorderWidth.textContent = `${inputBorderWidth.value}px`;
@@ -384,7 +449,9 @@ function setupEventListeners() {
     currentOptions.secondaryColor = secondaryColorInput.value;
     currentOptions.accentColor = accentColorInput.value;
     currentOptions.borderColor = borderColorInput.value;
-    currentOptions.glowColor = borderColorInput.value;
+    currentOptions.glowColor = glowColorInput.value;
+    activeColorThemeId = null;
+    updateActiveColorThemeUI();
     engine.updateOptions(currentOptions);
   };
 
@@ -392,6 +459,26 @@ function setupEventListeners() {
   secondaryColorInput.addEventListener('input', updateColors);
   accentColorInput.addEventListener('input', updateColors);
   borderColorInput.addEventListener('input', updateColors);
+  glowColorInput.addEventListener('input', updateColors);
+
+  // ランダム配色 & 初期色リセット
+  btnRandomColors.addEventListener('click', () => {
+    applyColorPalette(generateRandomColorPalette(), null);
+  });
+
+  btnResetColors.addEventListener('click', () => {
+    const defaults = currentPreset.defaultOptions;
+    applyColorPalette(
+      {
+        primaryColor: defaults.primaryColor,
+        secondaryColor: defaults.secondaryColor,
+        accentColor: defaults.accentColor,
+        borderColor: defaults.borderColor,
+        glowColor: defaults.glowColor,
+      },
+      null
+    );
+  });
 
   // ボーダー幅 & グロー
   inputBorderWidth.addEventListener('input', () => {
