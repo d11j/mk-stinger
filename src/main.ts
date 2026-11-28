@@ -152,7 +152,7 @@ const btnDownloadExport = document.getElementById('btnDownloadExport') as HTMLAn
 const toastMessage = document.getElementById('toastMessage') as HTMLElement;
 
 // 現在の設定（同一セッション内のプリセット別ドラフト・カラー引き継ぎを管理）
-const stateStore = new PresetStateStore(PRESET_MAP, 'hex');
+const stateStore = new PresetStateStore(PRESET_MAP, 'shutter-gate');
 
 const DEFAULT_EXPORT_DETAILS_TEXT =
   'WebCodecs API により、ブラウザ上で直接高速エンコードを実行しています。';
@@ -212,7 +212,7 @@ function renderLogoAnimationOptions() {
 function init() {
   renderLogoAnimationOptions();
 
-  const restored = parseShareUrl(window.location.search, PRESET_MAP, 'hex');
+  const restored = parseShareUrl(window.location.search, PRESET_MAP, 'shutter-gate');
   if (restored.hasShareParams) {
     const applied = stateStore.applyRestoredState(
       restored.presetId,
