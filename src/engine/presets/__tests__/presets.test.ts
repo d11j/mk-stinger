@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createCanvas } from '@napi-rs/canvas';
 import { ALL_PRESETS, PRESET_MAP } from '../index';
 import { GlitchAnimationPlugin, defaultGlitchOptions } from '../GlitchAnimation';
+import { ShutterGateAnimationPlugin, defaultShutterGateOptions } from '../ShutterGateAnimation';
+import { FadeAnimationPlugin, defaultFadeOptions } from '../FadeAnimation';
 
 const TEST_WIDTH = 320;
 const TEST_HEIGHT = 180;
@@ -239,4 +241,207 @@ describe('GlitchAnimation noiseAmount option', () => {
       expect(Buffer.from(dataA).equals(Buffer.from(dataB))).toBe(true);
     }
   );
+});
+
+describe('ShutterGateAnimation options', () => {
+  function measureOpaqueRatio(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): number {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    const totalPixels = width * height;
+    let opaquePixels = 0;
+
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] === 255) {
+        opaquePixels++;
+      }
+    }
+
+    return opaquePixels / totalPixels;
+  }
+
+  function measureTransparentRatio(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): number {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    const totalPixels = width * height;
+    let transparentPixels = 0;
+
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] === 0) {
+        transparentPixels++;
+      }
+    }
+
+    return transparentPixels / totalPixels;
+  }
+
+  it.each([
+    { direction: 'vertical' as const, seamPosition: 0, holdDuration: 0.3, layerCount: 3 },
+    { direction: 'vertical' as const, seamPosition: -1, holdDuration: 0.2, layerCount: 2 },
+    { direction: 'vertical' as const, seamPosition: 1, holdDuration: 0.5, layerCount: 1 },
+    { direction: 'horizontal' as const, seamPosition: -0.4, holdDuration: 0.3, layerCount: 3 },
+    { direction: 'horizontal' as const, seamPosition: 1, holdDuration: 0.1, layerCount: 2 },
+  ])(
+    'direction=$direction, seamPosition=$seamPosition, holdDuration=$holdDuration で境界透明・ホールド完全不透明を満たすこと',
+    ({ direction, seamPosition, holdDuration, layerCount }) => {
+      const options = {
+        ...defaultShutterGateOptions,
+        direction,
+        seamPosition,
+        holdDuration,
+        layerCount,
+      };
+
+      const start = createTestContext();
+      ShutterGateAnimationPlugin.render(
+        start.ctx,
+        0.0,
+        0,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      expect(measureTransparentRatio(start.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(1);
+
+      const hold = createTestContext();
+      ShutterGateAnimationPlugin.render(
+        hold.ctx,
+        0.5,
+        30,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      expect(measureOpaqueRatio(hold.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(1);
+
+      const end = createTestContext();
+      ShutterGateAnimationPlugin.render(
+        end.ctx,
+        1.0,
+        TOTAL_FRAMES - 1,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      expect(measureTransparentRatio(end.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(1);
+    }
+  );
+});
+
+describe('FadeAnimation modes', () => {
+  function measureAverageLuma(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): number {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    let sum = 0;
+    const totalPixels = width * height;
+    for (let i = 0; i < data.length; i += 4) {
+      sum += data[i];
+    }
+    return sum / totalPixels;
+  }
+
+  function measureAlphaState(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    const totalPixels = width * height;
+    let opaque = 0;
+    let transparent = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] === 255) opaque++;
+      if (data[i] === 0) transparent++;
+    }
+    return {
+      opaqueRatio: opaque / totalPixels,
+      transparentRatio: transparent / totalPixels,
+    };
+  }
+
+  it('cross モードでは render が常に完全透明で、renderMatte が黒→グレー→白へ単調増加すること', () => {
+    const options = { ...defaultFadeOptions, fadeMode: 'cross' as const };
+
+    const midRender = createTestContext();
+    FadeAnimationPlugin.render(
+      midRender.ctx,
+      0.5,
+      30,
+      TOTAL_FRAMES,
+      TEST_WIDTH,
+      TEST_HEIGHT,
+      options
+    );
+    expect(measureAlphaState(midRender.ctx, TEST_WIDTH, TEST_HEIGHT).transparentRatio).toBe(1);
+
+    const renderMatteLuma = (progress: number, frameIndex: number) => {
+      const { ctx } = createTestContext();
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, TEST_WIDTH, TEST_HEIGHT);
+      FadeAnimationPlugin.renderMatte(
+        ctx,
+        progress,
+        frameIndex,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      return measureAverageLuma(ctx, TEST_WIDTH, TEST_HEIGHT);
+    };
+
+    const lumaStart = renderMatteLuma(0.0, 0);
+    const lumaMid = renderMatteLuma(0.5, 30);
+    const lumaEnd = renderMatteLuma(1.0, TOTAL_FRAMES - 1);
+
+    expect(lumaStart).toBe(0);
+    expect(lumaMid).toBeGreaterThan(100);
+    expect(lumaMid).toBeLessThan(155);
+    expect(lumaEnd).toBe(255);
+  });
+
+  it('dip モードでは境界が完全透明・ホールド中が完全不透明で、renderMatte がホールド時点で白になること', () => {
+    const options = { ...defaultFadeOptions, fadeMode: 'dip' as const, holdDuration: 0.2 };
+
+    const start = createTestContext();
+    FadeAnimationPlugin.render(start.ctx, 0.0, 0, TOTAL_FRAMES, TEST_WIDTH, TEST_HEIGHT, options);
+    expect(measureAlphaState(start.ctx, TEST_WIDTH, TEST_HEIGHT).transparentRatio).toBe(1);
+
+    const hold = createTestContext();
+    FadeAnimationPlugin.render(hold.ctx, 0.5, 30, TOTAL_FRAMES, TEST_WIDTH, TEST_HEIGHT, options);
+    expect(measureAlphaState(hold.ctx, TEST_WIDTH, TEST_HEIGHT).opaqueRatio).toBe(1);
+
+    const end = createTestContext();
+    FadeAnimationPlugin.render(
+      end.ctx,
+      1.0,
+      TOTAL_FRAMES - 1,
+      TOTAL_FRAMES,
+      TEST_WIDTH,
+      TEST_HEIGHT,
+      options
+    );
+    expect(measureAlphaState(end.ctx, TEST_WIDTH, TEST_HEIGHT).transparentRatio).toBe(1);
+
+    const matteMid = createTestContext();
+    matteMid.ctx.fillStyle = '#000000';
+    matteMid.ctx.fillRect(0, 0, TEST_WIDTH, TEST_HEIGHT);
+    FadeAnimationPlugin.renderMatte(
+      matteMid.ctx,
+      0.5,
+      30,
+      TOTAL_FRAMES,
+      TEST_WIDTH,
+      TEST_HEIGHT,
+      options
+    );
+    expect(measureWhiteRatio(matteMid.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(1);
+  });
 });

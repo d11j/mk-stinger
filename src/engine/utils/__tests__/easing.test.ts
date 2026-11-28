@@ -5,6 +5,7 @@ import {
   easeInCharge,
   easeInOutCubic,
   easeInOutExpo,
+  easeInQuart,
   easeOutBack,
   easeOutBurst,
 } from '../easing';
@@ -25,6 +26,7 @@ describe.each([
   ['easeOutBack', easeOutBack],
   ['easeInBack', easeInBack],
   ['easeInCharge', easeInCharge],
+  ['easeInQuart', easeInQuart],
   ['easeOutBurst', easeOutBurst],
 ])('%s', (_name, fn) => {
   it('境界値 0 と 1 でそれぞれ 0 と 1 を返すこと', () => {
@@ -52,8 +54,9 @@ describe('イージング関数の曲線特性', () => {
     expect(easeInBack(0.3)).toBeLessThan(0);
   });
 
-  it('easeInCharge は加速型、easeOutBurst は減速型であること', () => {
+  it('easeInCharge / easeInQuart は加速型、easeOutBurst は減速型であること', () => {
     expect(easeInCharge(0.5)).toBeLessThan(0.5);
+    expect(easeInQuart(0.5)).toBeCloseTo(0.0625, 6);
     expect(easeOutBurst(0.5)).toBeGreaterThan(0.5);
   });
 });
