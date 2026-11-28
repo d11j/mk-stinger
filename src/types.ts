@@ -1,4 +1,4 @@
-export type ResolutionPreset = '1080p' | '720p';
+export type ResolutionPreset = '1080p' | '720p' | '1440p' | 'vertical-1080p' | 'vertical-720p';
 
 export interface Resolution {
   width: number;
@@ -9,6 +9,9 @@ export interface Resolution {
 export const RESOLUTIONS: Record<ResolutionPreset, Resolution> = {
   '1080p': { width: 1920, height: 1080, label: '1080p (Full HD - 1920×1080)' },
   '720p': { width: 1280, height: 720, label: '720p (HD - 1280×720)' },
+  '1440p': { width: 2560, height: 1440, label: '1440p (WQHD - 2560×1440)' },
+  'vertical-1080p': { width: 1080, height: 1920, label: '縦型 1080p (9:16 - 1080×1920)' },
+  'vertical-720p': { width: 720, height: 1280, label: '縦型 720p (9:16 - 720×1280)' },
 };
 
 export interface ExportConfig {
@@ -54,7 +57,7 @@ export interface LogoOverlayOptions {
   enabled: boolean;
   image: HTMLImageElement | null;
   animation: LogoOverlayAnimation;
-  /** 画面高さに対するロゴ長辺の比率 (0.10 〜 0.80) */
+  /** 画面短辺に対するロゴ長辺の比率 (0.10 〜 0.80) */
   scale: number;
   /** X 位置オフセット (-0.50 〜 +0.50, 画面幅比) */
   offsetX: number;

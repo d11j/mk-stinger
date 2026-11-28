@@ -23,6 +23,27 @@ export const defaultLineWipeOptions: LineWipePresetOptions = {
   speedLines: true,
 };
 
+function computeLineWipeGeometry(width: number, height: number, options: LineWipePresetOptions) {
+  const resScale = Math.min(width, height) / 1080;
+  const rad = (options.angleDeg * Math.PI) / 180;
+  const tan = Math.tan(rad);
+  const skewOffset = height * tan;
+
+  const baseBandW = options.bandWidth * resScale;
+  const glowMargin = options.hasGlow ? (options.glowBlur || 24) * resScale : 0;
+  const totalExtra = Math.max(
+    350 * resScale,
+    baseBandW * 1.6 + options.borderWidth * resScale + glowMargin + 80 * resScale
+  );
+
+  // 移動範囲（画面外左から画面外右まで完全に抜け切るスパン）
+  const startX = -totalExtra;
+  const endX = width + Math.abs(skewOffset) + totalExtra;
+  const currentSpan = endX - startX;
+
+  return { resScale, skewOffset, baseBandW, totalExtra, startX, currentSpan };
+}
+
 export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
   id: 'line-wipe',
   name: 'LINE WIPE (斜めラインワイプ)',
@@ -68,17 +89,11 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
 
-    const rad = (options.angleDeg * Math.PI) / 180;
-    const tan = Math.tan(rad);
-    const skewOffset = height * tan;
-
-    const baseBandW = options.bandWidth;
-    const totalExtra = 350; // 前後サブラインや発光の余白
-
-    // 移動範囲（画面外左から画面外右まで完全に抜け切るスパン）
-    const startX = -totalExtra;
-    const endX = width + Math.abs(skewOffset) + totalExtra;
-    const currentSpan = endX - startX;
+    const { resScale, skewOffset, baseBandW, startX, currentSpan } = computeLineWipeGeometry(
+      width,
+      height,
+      options
+    );
 
     const easedP = easeInOutCubic(Math.max(0, Math.min(1, progress)));
     const centerX = startX + currentSpan * easedP;
@@ -99,7 +114,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
     // 1. スピードダッシュライン（背後エフェクト）
     if (options.speedLines) {
       ctx.shadowBlur = 0;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = Math.max(1, 2 * resScale);
       const count = 7;
       for (let i = 0; i < count; i++) {
         const lineY = (height / (count + 1)) * (i + 1);
@@ -107,8 +122,8 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
         const lineCenterX = centerX - yRatio * skewOffset;
 
         // 帯の前後に走る光条
-        const speedOffset = Math.sin(frameIndex * 0.4 + i * 1.5) * 60;
-        const lineLen = 120 + ((i * 37) % 80);
+        const speedOffset = Math.sin(frameIndex * 0.4 + i * 1.5) * 60 * resScale;
+        const lineLen = (120 + ((i * 37) % 80)) * resScale;
         const lx1 = lineCenterX - baseBandW * 0.8 + speedOffset - lineLen;
         const lx2 = lx1 + lineLen;
 
@@ -127,7 +142,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
 
     // 2. 先行サブストライプ（右側＝進行方向前方）
     const leadOffsets = [baseBandW * 0.65, baseBandW * 0.9, baseBandW * 1.15];
-    const leadWidths = [10, 5, 2];
+    const leadWidths = [10 * resScale, 5 * resScale, 2 * resScale];
     const leadAlphas = [0.85, 0.6, 0.35];
 
     for (let i = 0; i < Math.min(options.stripeCount, leadOffsets.length); i++) {
@@ -140,7 +155,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
 
     // 3. 後続サブストライプ（左側＝通過後）
     const trailOffsets = [-baseBandW * 0.65, -baseBandW * 0.9, -baseBandW * 1.2];
-    const trailWidths = [12, 6, 3];
+    const trailWidths = [12 * resScale, 6 * resScale, 3 * resScale];
     const trailAlphas = [0.8, 0.5, 0.3];
 
     for (let i = 0; i < Math.min(options.stripeCount, trailOffsets.length); i++) {
@@ -156,7 +171,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
     // 4. メイン帯のグロー発光
     if (options.hasGlow) {
       ctx.shadowColor = options.glowColor || options.primaryColor;
-      ctx.shadowBlur = options.glowBlur || 24;
+      ctx.shadowBlur = (options.glowBlur || 24) * resScale;
     }
 
     // 5. メイン帯（Main Band）描画
@@ -175,7 +190,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
     // 6. メイン帯のエッジライン・ボーダー
     if (options.borderWidth > 0) {
       ctx.strokeStyle = options.borderColor || '#ffffff';
-      ctx.lineWidth = options.borderWidth;
+      ctx.lineWidth = Math.max(0.5, options.borderWidth * resScale);
 
       // 進行方向前面（右側エッジ）
       ctx.beginPath();
@@ -193,7 +208,7 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
 
       // 中央のアクセントスリット（微細なセンターハイライト）
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(0.5, 1.5 * resScale);
       ctx.beginPath();
       ctx.moveTo(centerX, 0);
       ctx.lineTo(centerX - skewOffset, height);
@@ -210,15 +225,11 @@ export const LineWipeAnimationPlugin: PresetPlugin<LineWipePresetOptions> = {
    * メイン帯の中心 (centerX) を境界として、通過した左側領域を白で塗りつぶす
    */
   renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
-    const rad = (options.angleDeg * Math.PI) / 180;
-    const tan = Math.tan(rad);
-    const skewOffset = height * tan;
-
-    const totalExtra = 350;
-
-    const startX = -totalExtra;
-    const endX = width + Math.abs(skewOffset) + totalExtra;
-    const currentSpan = endX - startX;
+    const { skewOffset, totalExtra, startX, currentSpan } = computeLineWipeGeometry(
+      width,
+      height,
+      options
+    );
 
     const easedP = easeInOutCubic(Math.max(0, Math.min(1, progress)));
     const centerX = startX + currentSpan * easedP;

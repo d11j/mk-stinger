@@ -92,4 +92,27 @@ describe('TrackMatteRenderer', () => {
       expect(rightHalf[i + 3]).toBe(255);
     }
   });
+
+  it('縦型解像度 (9:16) でも横並び Side-by-Side (2w x h) で正しく合成されること', () => {
+    const width = 180;
+    const height = 320;
+    const renderer = new TrackMatteRenderer(width, height);
+
+    expect(renderer.outputCanvas.width).toBe(360);
+    expect(renderer.outputCanvas.height).toBe(320);
+
+    HexAnimationPlugin.render(renderer.animCtx, 1.0, 59, 60, width, height, defaultHexOptions);
+    const output = renderer.compositeSideBySide(HexAnimationPlugin, 1.0, 59, 60, defaultHexOptions);
+
+    expect(output.width).toBe(360);
+    expect(output.height).toBe(320);
+
+    const rightHalf = renderer.outputCtx.getImageData(width, 0, width, height).data;
+    for (let i = 0; i < rightHalf.length; i += 4) {
+      expect(rightHalf[i]).toBe(255);
+      expect(rightHalf[i + 1]).toBe(255);
+      expect(rightHalf[i + 2]).toBe(255);
+      expect(rightHalf[i + 3]).toBe(255);
+    }
+  });
 });

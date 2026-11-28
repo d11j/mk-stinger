@@ -55,7 +55,8 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
 
-    const bSize = options.blockSize;
+    const resScale = Math.min(width, height) / 1080;
+    const bSize = Math.max(4, options.blockSize * resScale);
     const cols = Math.ceil(width / bSize);
     const rows = Math.ceil(height / bSize);
 
@@ -119,10 +120,10 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
 
         if (options.borderWidth > 0 && scale > 0.8) {
           ctx.strokeStyle = options.borderColor;
-          ctx.lineWidth = options.borderWidth;
+          ctx.lineWidth = Math.max(0.5, options.borderWidth * resScale);
           if (options.hasGlow) {
             ctx.shadowColor = options.glowColor;
-            ctx.shadowBlur = options.glowBlur;
+            ctx.shadowBlur = options.glowBlur * resScale;
           }
           ctx.strokeRect(-w / 2, -h / 2, w, h);
         }
@@ -133,7 +134,8 @@ export const GlitchAnimationPlugin: PresetPlugin<GlitchPresetOptions> = {
   },
 
   renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
-    const bSize = options.blockSize;
+    const resScale = Math.min(width, height) / 1080;
+    const bSize = Math.max(4, options.blockSize * resScale);
     const cols = Math.ceil(width / bSize);
     const rows = Math.ceil(height / bSize);
     const fillEnd = 0.46;

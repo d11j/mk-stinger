@@ -21,6 +21,21 @@ export const defaultSlashOptions: SlashPresetOptions = {
   speedLines: true,
 };
 
+function computeSlashGeometry(width: number, height: number, options: SlashPresetOptions) {
+  const resScale = Math.min(width, height) / 1080;
+  const rad = (options.angleDeg * Math.PI) / 180;
+  const tan = Math.tan(rad);
+  const skewOffset = height * tan;
+  const margin = Math.max(
+    100 * resScale,
+    (options.borderWidth + (options.hasGlow ? options.glowBlur : 0)) * resScale + 40 * resScale
+  );
+  // 左辺は常に画面外左 (-margin)、pLayer = 1 のとき右下端も width + margin (> width) に到達させる
+  const startX = -margin;
+  const fullWidth = width + Math.abs(skewOffset) + margin * 2;
+  return { resScale, skewOffset, startX, fullWidth };
+}
+
 export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
   id: 'slash',
   name: 'SLASH WIPE (斜めスライス)',
@@ -57,10 +72,11 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
 
-    const rad = (options.angleDeg * Math.PI) / 180;
-    const tan = Math.tan(rad);
-    const skewOffset = height * tan;
-    const totalSpan = width + Math.abs(skewOffset) + 400;
+    const { resScale, skewOffset, startX, fullWidth } = computeSlashGeometry(
+      width,
+      height,
+      options
+    );
 
     const fillEnd = 0.45;
     const holdEnd = 0.55;
@@ -71,12 +87,12 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
     // スラッシュ帯の描画
     ctx.save();
     // 傾きをシミュレートする多角形
-    const drawSkewRect = (startX: number, rectW: number) => {
+    const drawSkewRect = (originX: number, rectW: number) => {
       ctx.beginPath();
-      ctx.moveTo(startX, 0);
-      ctx.lineTo(startX + rectW, 0);
-      ctx.lineTo(startX + rectW - skewOffset, height);
-      ctx.lineTo(startX - skewOffset, height);
+      ctx.moveTo(originX, 0);
+      ctx.lineTo(originX + rectW, 0);
+      ctx.lineTo(originX + rectW - skewOffset, height);
+      ctx.lineTo(originX - skewOffset, height);
       ctx.closePath();
     };
 
@@ -98,8 +114,7 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
       if (pLayer <= 0) continue;
 
       const layerColor = colors[i % colors.length];
-      const startX = -Math.abs(skewOffset) - 100;
-      const currentWidth = (totalSpan + 200) * pLayer;
+      const currentWidth = fullWidth * pLayer;
 
       ctx.fillStyle = layerColor;
       drawSkewRect(startX, currentWidth);
@@ -108,10 +123,10 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
       // 先頭ストローク
       if (options.borderWidth > 0 && pLayer > 0 && pLayer < 1) {
         ctx.strokeStyle = options.borderColor;
-        ctx.lineWidth = options.borderWidth;
+        ctx.lineWidth = Math.max(0.5, options.borderWidth * resScale);
         if (options.hasGlow) {
           ctx.shadowColor = options.glowColor;
-          ctx.shadowBlur = options.glowBlur;
+          ctx.shadowBlur = options.glowBlur * resScale;
         }
         ctx.beginPath();
         const headX = startX + currentWidth;
@@ -125,11 +140,12 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
     if (options.speedLines && (progress < fillEnd || progress > holdEnd)) {
       ctx.shadowBlur = 0;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = Math.max(1, 2 * resScale);
       for (let j = 0; j < 5; j++) {
         const lineY = (height / 6) * (j + 1);
-        const lineLen = 150 + Math.sin(frameIndex + j) * 80;
-        const lineX = ((width * progress * 2 + j * 120) % (width + 300)) - 100;
+        const lineLen = (150 + Math.sin(frameIndex + j) * 80) * resScale;
+        const lineX =
+          ((width * progress * 2 + j * 120 * resScale) % (width + 300 * resScale)) - 100 * resScale;
         ctx.beginPath();
         ctx.moveTo(lineX, lineY);
         ctx.lineTo(lineX + lineLen, lineY);
@@ -141,10 +157,7 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
   },
 
   renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
-    const rad = (options.angleDeg * Math.PI) / 180;
-    const tan = Math.tan(rad);
-    const skewOffset = height * tan;
-    const totalSpan = width + Math.abs(skewOffset) + 400;
+    const { skewOffset, startX, fullWidth } = computeSlashGeometry(width, height, options);
 
     const fillEnd = 0.45;
 
@@ -156,8 +169,7 @@ export const SlashAnimationPlugin: PresetPlugin<SlashPresetOptions> = {
     }
 
     const p = easeInOutExpo(Math.max(0, Math.min(1, progress / fillEnd)));
-    const startX = -Math.abs(skewOffset) - 100;
-    const currentWidth = (totalSpan + 200) * p;
+    const currentWidth = fullWidth * p;
 
     // スラッシュの通過領域を白 (Scene B) で塗る
     ctx.fillStyle = '#ffffff';

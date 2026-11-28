@@ -442,7 +442,7 @@ export class AnimationEngine {
   }
 
   private drawCheckerboard(ctx: CanvasRenderingContext2D, w: number, h: number) {
-    const size = 32;
+    const size = Math.max(8, Math.round(32 * (Math.min(w, h) / 1080)));
     ctx.fillStyle = '#18181b';
     ctx.fillRect(0, 0, w, h);
 
@@ -473,6 +473,16 @@ export class AnimationEngine {
   }
 
   private createSimScenes(w: number, h: number) {
+    const shortSide = Math.min(w, h);
+    const s = shortSide / 1080;
+    const gridStep = Math.max(16, Math.round(80 * s));
+    const padX = Math.round(64 * s);
+    const titleY = Math.round(100 * s);
+    const subY = Math.round(145 * s);
+    const bigLetterSize = Math.round(shortSide * 0.72);
+    const titleSize = Math.max(16, Math.round(34 * s));
+    const subSize = Math.max(12, Math.round(19 * s));
+
     // シーンA: カスタム画像またはゲーム画面風モック
     this.sceneACanvas = new OffscreenCanvas(w, h);
     const ctxA = this.sceneACanvas.getContext('2d')!;
@@ -491,14 +501,14 @@ export class AnimationEngine {
 
       // サイバーグリッド
       ctxA.strokeStyle = 'rgba(99, 102, 241, 0.15)';
-      ctxA.lineWidth = 1;
-      for (let x = 0; x < w; x += 80) {
+      ctxA.lineWidth = Math.max(1, s);
+      for (let x = 0; x < w; x += gridStep) {
         ctxA.beginPath();
         ctxA.moveTo(x, 0);
         ctxA.lineTo(x, h);
         ctxA.stroke();
       }
-      for (let y = 0; y < h; y += 80) {
+      for (let y = 0; y < h; y += gridStep) {
         ctxA.beginPath();
         ctxA.moveTo(0, y);
         ctxA.lineTo(w, y);
@@ -506,7 +516,7 @@ export class AnimationEngine {
       }
 
       // ゲームUIモック
-      ctxA.font = '1000px sans-serif';
+      ctxA.font = `${bigLetterSize}px sans-serif`;
       ctxA.textAlign = 'center';
       ctxA.textBaseline = 'middle';
       ctxA.fillStyle = '#aaaaaa';
@@ -515,15 +525,16 @@ export class AnimationEngine {
       ctxA.textAlign = 'left';
       ctxA.textBaseline = 'bottom';
       ctxA.fillStyle = '#6366f1';
-      ctxA.font = 'bold 36px sans-serif';
-      ctxA.fillText('🎮 SCENE A: GAMEPLAY (移行前シーン)', 80, 100);
+      ctxA.font = `bold ${titleSize}px sans-serif`;
+      ctxA.fillText('🎮 SCENE A: GAMEPLAY (移行前シーン)', padX, titleY, w - padX * 2);
 
       ctxA.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctxA.font = '20px sans-serif';
+      ctxA.font = `${subSize}px sans-serif`;
       ctxA.fillText(
         'スティンガー通過中... トラックマットの白領域に Scene B が展開されます',
-        80,
-        150
+        padX,
+        subY,
+        w - padX * 2
       );
     }
 
@@ -543,7 +554,7 @@ export class AnimationEngine {
       ctxB.fillStyle = gradB;
       ctxB.fillRect(0, 0, w, h);
 
-      ctxB.font = '1000px sans-serif';
+      ctxB.font = `${bigLetterSize}px sans-serif`;
       ctxB.textAlign = 'center';
       ctxB.textBaseline = 'middle';
       ctxB.fillStyle = '#aaaaaa';
@@ -552,22 +563,32 @@ export class AnimationEngine {
       ctxB.textAlign = 'left';
       ctxB.textBaseline = 'bottom';
       ctxB.fillStyle = '#f43f5e';
-      ctxB.font = 'bold 36px sans-serif';
-      ctxB.fillText('🎙️ SCENE B: JUST CHATTING (移行後シーン)', 80, 100);
+      ctxB.font = `bold ${titleSize}px sans-serif`;
+      ctxB.fillText('🎙️ SCENE B: JUST CHATTING (移行後シーン)', padX, titleY, w - padX * 2);
 
       ctxB.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctxB.font = '20px sans-serif';
-      ctxB.fillText('トラックマット通過完了！ 新しいシーンへ移行しました', 80, 150);
+      ctxB.font = `${subSize}px sans-serif`;
+      ctxB.fillText(
+        'トラックマット通過完了！ 新しいシーンへ移行しました',
+        padX,
+        subY,
+        w - padX * 2
+      );
 
       // カメラ枠
+      const camW = Math.min(Math.round(480 * s), w - padX * 2);
+      const camH = Math.round((camW * 9) / 16);
+      const camY = Math.round(190 * s);
       ctxB.strokeStyle = '#ec4899';
-      ctxB.lineWidth = 4;
-      ctxB.strokeRect(80, 200, 480, 270);
+      ctxB.lineWidth = Math.max(2, Math.round(4 * s));
+      ctxB.strokeRect(padX, camY, camW, camH);
       ctxB.fillStyle = 'rgba(0,0,0,0.5)';
-      ctxB.fillRect(80, 200, 480, 270);
+      ctxB.fillRect(padX, camY, camW, camH);
       ctxB.fillStyle = '#ffffff';
-      ctxB.font = '18px sans-serif';
-      ctxB.fillText('CAMERA FRAME', 220, 340);
+      ctxB.textAlign = 'center';
+      ctxB.textBaseline = 'middle';
+      ctxB.font = `${Math.max(12, Math.round(18 * s))}px sans-serif`;
+      ctxB.fillText('CAMERA FRAME', padX + camW / 2, camY + camH / 2);
     }
 
     // 合成用キャンバス
