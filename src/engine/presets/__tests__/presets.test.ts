@@ -6,6 +6,8 @@ import { ShutterGateAnimationPlugin, defaultShutterGateOptions } from '../Shutte
 import { FadeAnimationPlugin, defaultFadeOptions } from '../FadeAnimation';
 import { LineWipeAnimationPlugin, defaultLineWipeOptions } from '../LineWipeAnimation';
 import { SpriteWipeAnimationPlugin, defaultSpriteWipeOptions } from '../SpriteWipeAnimation';
+import { SlashAnimationPlugin, defaultSlashOptions } from '../SlashAnimation';
+import { HexAnimationPlugin, defaultHexOptions } from '../HexAnimation';
 
 const TEST_WIDTH = 320;
 const TEST_HEIGHT = 180;
@@ -281,6 +283,43 @@ describe('Wipe presets boundary clearance across orientations', () => {
           plugin.render(ctx, progress, frameIndex, TOTAL_FRAMES, w, h, opts as never);
           expect(countNonTransparentPixels(ctx, w, h)).toBe(0);
         }
+      }
+    }
+  );
+});
+
+describe('Full-cover presets hold coverage across orientations', () => {
+  function measureOpaqueRatio(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): number {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    const totalPixels = width * height;
+    let opaquePixels = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] === 255) opaquePixels++;
+    }
+    return opaquePixels / totalPixels;
+  }
+
+  it.each([
+    { label: '横型 16:9', w: TEST_WIDTH, h: TEST_HEIGHT },
+    { label: '縦型 9:16', w: VERTICAL_WIDTH, h: VERTICAL_HEIGHT },
+  ])(
+    '$label で Slash (25°/45°) / Hex / Glitch がホールド時点 (progress=0.5) で全画面 100% 不透明であること',
+    ({ w, h }) => {
+      const cases = [
+        [SlashAnimationPlugin, { ...defaultSlashOptions, angleDeg: 25 }],
+        [SlashAnimationPlugin, { ...defaultSlashOptions, angleDeg: 45 }],
+        [HexAnimationPlugin, defaultHexOptions],
+        [GlitchAnimationPlugin, defaultGlitchOptions],
+      ] as const;
+
+      for (const [plugin, opts] of cases) {
+        const { ctx } = createTestContext(w, h);
+        plugin.render(ctx, 0.5, 30, TOTAL_FRAMES, w, h, opts as never);
+        expect(measureOpaqueRatio(ctx, w, h)).toBe(1);
       }
     }
   );
