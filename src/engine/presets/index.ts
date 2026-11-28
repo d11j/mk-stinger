@@ -5,9 +5,11 @@ import { GlitchAnimationPlugin, defaultGlitchOptions } from './GlitchAnimation';
 import { LineWipeAnimationPlugin, defaultLineWipeOptions } from './LineWipeAnimation';
 import { SpriteWipeAnimationPlugin, defaultSpriteWipeOptions } from './SpriteWipeAnimation';
 import { HyperJumpAnimationPlugin, defaultHyperJumpOptions } from './HyperJumpAnimation';
+import { ShutterGateAnimationPlugin, defaultShutterGateOptions } from './ShutterGateAnimation';
 
 export const ALL_PRESETS: PresetPlugin<any>[] = [
   HexAnimationPlugin,
+  ShutterGateAnimationPlugin,
   LineWipeAnimationPlugin,
   SpriteWipeAnimationPlugin,
   HyperJumpAnimationPlugin,
@@ -19,12 +21,14 @@ export const PRESET_MAP = new Map<string, PresetPlugin<any>>(ALL_PRESETS.map((p)
 
 export {
   HexAnimationPlugin,
+  ShutterGateAnimationPlugin,
   LineWipeAnimationPlugin,
   SpriteWipeAnimationPlugin,
   HyperJumpAnimationPlugin,
   SlashAnimationPlugin,
   GlitchAnimationPlugin,
   defaultHexOptions,
+  defaultShutterGateOptions,
   defaultLineWipeOptions,
   defaultSpriteWipeOptions,
   defaultHyperJumpOptions,

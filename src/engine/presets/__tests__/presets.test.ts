@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createCanvas } from '@napi-rs/canvas';
 import { ALL_PRESETS, PRESET_MAP } from '../index';
 import { GlitchAnimationPlugin, defaultGlitchOptions } from '../GlitchAnimation';
+import { ShutterGateAnimationPlugin, defaultShutterGateOptions } from '../ShutterGateAnimation';
 
 const TEST_WIDTH = 320;
 const TEST_HEIGHT = 180;
@@ -237,6 +238,99 @@ describe('GlitchAnimation noiseAmount option', () => {
       const dataA = midA.ctx.getImageData(0, 0, TEST_WIDTH, TEST_HEIGHT).data;
       const dataB = midB.ctx.getImageData(0, 0, TEST_WIDTH, TEST_HEIGHT).data;
       expect(Buffer.from(dataA).equals(Buffer.from(dataB))).toBe(true);
+    }
+  );
+});
+
+describe('ShutterGateAnimation options', () => {
+  function measureOpaqueRatio(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): number {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    const totalPixels = width * height;
+    let opaquePixels = 0;
+
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] === 255) {
+        opaquePixels++;
+      }
+    }
+
+    return opaquePixels / totalPixels;
+  }
+
+  function measureTransparentRatio(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): number {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    const totalPixels = width * height;
+    let transparentPixels = 0;
+
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] === 0) {
+        transparentPixels++;
+      }
+    }
+
+    return transparentPixels / totalPixels;
+  }
+
+  it.each([
+    { direction: 'vertical' as const, seamPosition: 0, holdDuration: 0.3, layerCount: 3 },
+    { direction: 'vertical' as const, seamPosition: -1, holdDuration: 0.2, layerCount: 2 },
+    { direction: 'vertical' as const, seamPosition: 1, holdDuration: 0.5, layerCount: 1 },
+    { direction: 'horizontal' as const, seamPosition: -0.4, holdDuration: 0.3, layerCount: 3 },
+    { direction: 'horizontal' as const, seamPosition: 1, holdDuration: 0.1, layerCount: 2 },
+  ])(
+    'direction=$direction, seamPosition=$seamPosition, holdDuration=$holdDuration で境界透明・ホールド完全不透明を満たすこと',
+    ({ direction, seamPosition, holdDuration, layerCount }) => {
+      const options = {
+        ...defaultShutterGateOptions,
+        direction,
+        seamPosition,
+        holdDuration,
+        layerCount,
+      };
+
+      const start = createTestContext();
+      ShutterGateAnimationPlugin.render(
+        start.ctx,
+        0.0,
+        0,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      expect(measureTransparentRatio(start.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(1);
+
+      const hold = createTestContext();
+      ShutterGateAnimationPlugin.render(
+        hold.ctx,
+        0.5,
+        30,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      expect(measureOpaqueRatio(hold.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(1);
+
+      const end = createTestContext();
+      ShutterGateAnimationPlugin.render(
+        end.ctx,
+        1.0,
+        TOTAL_FRAMES - 1,
+        TOTAL_FRAMES,
+        TEST_WIDTH,
+        TEST_HEIGHT,
+        options
+      );
+      expect(measureTransparentRatio(end.ctx, TEST_WIDTH, TEST_HEIGHT)).toBe(1);
     }
   );
 });

@@ -56,6 +56,14 @@ export function easeInCharge(x: number): number {
 }
 
 /**
+ * 強い加速の4次イージング (In Quart)
+ */
+export function easeInQuart(x: number): number {
+  const t = clamp01(x);
+  return t * t * t * t;
+}
+
+/**
  * 拡大フェーズ用イージング（中心から一気に高速で抜ける）
  */
 export function easeOutBurst(x: number): number {
