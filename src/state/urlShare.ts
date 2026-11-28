@@ -358,7 +358,7 @@ export function parseShareUrl(
     if (rawBr !== null) {
       const num = Number(rawBr);
       if (Number.isFinite(num)) {
-        output.bitrateMbps = clampAndStep(num, 8, 28, 2);
+        output.bitrateMbps = clampAndStep(num, 8, 40, 2);
       }
     }
   }

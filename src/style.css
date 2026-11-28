@@ -612,14 +612,11 @@ body {
 
 #previewCanvas {
   display: block;
+  width: auto;
+  height: auto;
   max-width: 100%;
   max-height: min(calc(100vh - 250px), 640px);
-  aspect-ratio: 16 / 9;
   object-fit: contain;
-}
-
-#previewCanvas.side-by-side {
-  aspect-ratio: 32 / 9;
 }
 
 /* 配信切替テスト用 カスタムシーンパネル（タイムライン直下・obs-info-card と統一配色） */

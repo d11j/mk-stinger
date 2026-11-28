@@ -4,9 +4,13 @@ import { ALL_PRESETS, PRESET_MAP } from '../index';
 import { GlitchAnimationPlugin, defaultGlitchOptions } from '../GlitchAnimation';
 import { ShutterGateAnimationPlugin, defaultShutterGateOptions } from '../ShutterGateAnimation';
 import { FadeAnimationPlugin, defaultFadeOptions } from '../FadeAnimation';
+import { LineWipeAnimationPlugin, defaultLineWipeOptions } from '../LineWipeAnimation';
+import { SpriteWipeAnimationPlugin, defaultSpriteWipeOptions } from '../SpriteWipeAnimation';
 
 const TEST_WIDTH = 320;
 const TEST_HEIGHT = 180;
+const VERTICAL_WIDTH = 180;
+const VERTICAL_HEIGHT = 320;
 const TOTAL_FRAMES = 60;
 
 function createTestContext(width = TEST_WIDTH, height = TEST_HEIGHT) {
@@ -181,6 +185,105 @@ describe.each(ALL_PRESETS)('Preset: $id ($name)', (preset) => {
     expect(midRatio).toBeGreaterThanOrEqual(startRatio);
     expect(endRatio).toBeGreaterThanOrEqual(midRatio);
   });
+
+  it('縦型解像度 (9:16) でも境界フレームの render / renderMatte が破綻せず開始黒・終了白を満たすこと', () => {
+    const renderMatteAt = (progress: number, frameIndex: number) => {
+      const { ctx } = createTestContext(VERTICAL_WIDTH, VERTICAL_HEIGHT);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, VERTICAL_WIDTH, VERTICAL_HEIGHT);
+      preset.renderMatte(
+        ctx,
+        progress,
+        frameIndex,
+        TOTAL_FRAMES,
+        VERTICAL_WIDTH,
+        VERTICAL_HEIGHT,
+        preset.defaultOptions
+      );
+      return measureWhiteRatio(ctx, VERTICAL_WIDTH, VERTICAL_HEIGHT);
+    };
+
+    const { ctx } = createTestContext(VERTICAL_WIDTH, VERTICAL_HEIGHT);
+    for (const { progress, frameIndex } of [
+      { progress: 0.0, frameIndex: 0 },
+      { progress: 0.5, frameIndex: Math.floor((TOTAL_FRAMES - 1) / 2) },
+      { progress: 1.0, frameIndex: TOTAL_FRAMES - 1 },
+    ]) {
+      expect(() => {
+        preset.render(
+          ctx,
+          progress,
+          frameIndex,
+          TOTAL_FRAMES,
+          VERTICAL_WIDTH,
+          VERTICAL_HEIGHT,
+          preset.defaultOptions
+        );
+      }).not.toThrow();
+    }
+
+    const startRatio = renderMatteAt(0.0, 0);
+    const midRatio = renderMatteAt(0.5, Math.floor((TOTAL_FRAMES - 1) / 2));
+    const endRatio = renderMatteAt(1.0, TOTAL_FRAMES - 1);
+
+    expect(startRatio).toBe(0);
+    expect(endRatio).toBe(1);
+    expect(midRatio).toBeGreaterThanOrEqual(startRatio);
+    expect(endRatio).toBeGreaterThanOrEqual(midRatio);
+  });
+});
+
+describe('Wipe presets boundary clearance across orientations', () => {
+  function countNonTransparentPixels(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): number {
+    const { data } = ctx.getImageData(0, 0, width, height);
+    let count = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] > 0) count++;
+    }
+    return count;
+  }
+
+  it.each([
+    { label: '横型 16:9', w: TEST_WIDTH, h: TEST_HEIGHT },
+    { label: '縦型 9:16', w: VERTICAL_WIDTH, h: VERTICAL_HEIGHT },
+  ])(
+    '$label で LineWipe / SpriteWipe の最大サイズ設定でも開始・終了フレームが完全透明であること',
+    ({ w, h }) => {
+      const lineOpts = {
+        ...defaultLineWipeOptions,
+        bandWidth: 360,
+        angleDeg: 45,
+        glowBlur: 40,
+        borderWidth: 10,
+      };
+      const spriteOpts = {
+        ...defaultSpriteWipeOptions,
+        spriteSize: 200,
+        spriteScatter: 100,
+        angleDeg: 45,
+        glowBlur: 40,
+        borderWidth: 10,
+      };
+
+      for (const [plugin, opts] of [
+        [LineWipeAnimationPlugin, lineOpts],
+        [SpriteWipeAnimationPlugin, spriteOpts],
+      ] as const) {
+        for (const { progress, frameIndex } of [
+          { progress: 0.0, frameIndex: 0 },
+          { progress: 1.0, frameIndex: TOTAL_FRAMES - 1 },
+        ]) {
+          const { ctx } = createTestContext(w, h);
+          plugin.render(ctx, progress, frameIndex, TOTAL_FRAMES, w, h, opts as never);
+          expect(countNonTransparentPixels(ctx, w, h)).toBe(0);
+        }
+      }
+    }
+  );
 });
 
 describe('GlitchAnimation noiseAmount option', () => {

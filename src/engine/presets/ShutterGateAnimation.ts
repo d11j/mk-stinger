@@ -248,7 +248,7 @@ export const ShutterGateAnimationPlugin: PresetPlugin<ShutterGatePresetOptions> 
 
     const layerCount = Math.max(1, Math.min(3, Math.round(options.layerCount)));
     const colors = getLayerColors(options, layerCount);
-    const scaleFactor = height / 1080;
+    const scaleFactor = Math.min(width, height) / 1080;
 
     const isHoldPhase = progress >= closeEnd && progress <= holdEnd;
 

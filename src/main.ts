@@ -52,6 +52,7 @@ const lblCurrentTime = document.getElementById('lblCurrentTime') as HTMLElement;
 const lblTotalTime = document.getElementById('lblTotalTime') as HTMLElement;
 const lblFrameBadge = document.getElementById('lblFrameBadge') as HTMLElement;
 const canvasResBadge = document.getElementById('canvasResBadge') as HTMLElement;
+const btnBgSideBySide = document.getElementById('btnBgSideBySide') as HTMLButtonElement;
 
 const presetList = document.getElementById('presetList') as HTMLDivElement;
 const presetDescription = document.getElementById('presetDescription') as HTMLDivElement;
@@ -475,15 +476,29 @@ function updateObsPanel() {
   obsOutputResolution.textContent = `${outputWidth}×${outputHeight} (横並び)`;
 }
 
-// 解像度バッジ更新
+function formatAspectRatio(width: number, height: number): string {
+  let a = Math.abs(Math.round(width));
+  let b = Math.abs(Math.round(height));
+  while (b !== 0) {
+    const tmp = b;
+    b = a % b;
+    a = tmp;
+  }
+  const gcd = a || 1;
+  return `${Math.round(width / gcd)}:${Math.round(height / gcd)}`;
+}
+
+// 解像度バッジ・プレビュー比率・全体表示ボタン表記を更新
 function updateCanvasResBadge() {
   const resKey = selectResolution.value as ResolutionPreset;
   const res = RESOLUTIONS[resKey];
-  if (engine.getBackgroundMode() === 'side_by_side') {
-    canvasResBadge.textContent = `${res.width * 2}×${res.height} (32:9)`;
-  } else {
-    canvasResBadge.textContent = `${res.width}×${res.height}`;
-  }
+  const isSideBySide = engine.getBackgroundMode() === 'side_by_side';
+  const displayWidth = isSideBySide ? res.width * 2 : res.width;
+  const displayHeight = res.height;
+
+  previewCanvas.style.aspectRatio = `${displayWidth} / ${displayHeight}`;
+  canvasResBadge.textContent = `${displayWidth}×${displayHeight} (${formatAspectRatio(displayWidth, displayHeight)})`;
+  btnBgSideBySide.textContent = `全体 ${formatAspectRatio(res.width * 2, res.height)}`;
 }
 
 // 背景モード切り替え

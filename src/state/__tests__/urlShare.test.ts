@@ -246,4 +246,31 @@ describe('urlShare', () => {
     expect(restored.logoOverlay.shadowColor).toBe(DEFAULT_LOGO_OVERLAY_OPTIONS.shadowColor);
     expect(restored.logoOverlay.shadowBlur).toBe(50);
   });
+
+  it.each(['1440p', 'vertical-1080p', 'vertical-720p'] as const)(
+    '追加された解像度プリセット (%s) と拡張ビットレート (最大 40 Mbps) が往復復元できること',
+    (resolutionKey) => {
+      const hexPreset = PRESET_MAP.get('hex')!;
+      const url = buildShareUrl(BASE_URL, hexPreset, {
+        presetId: 'hex',
+        options: { ...hexPreset.defaultOptions },
+        output: {
+          ...DEFAULT_OUTPUT_SETTINGS,
+          resolutionKey,
+          bitrateMbps: 40,
+        },
+      });
+
+      const parsedUrl = new URL(url);
+      expect(parsedUrl.searchParams.get('res')).toBe(resolutionKey);
+      expect(parsedUrl.searchParams.get('br')).toBe('40');
+
+      const restored = parseShareUrl(parsedUrl.search, PRESET_MAP, 'hex');
+      expect(restored.output.resolutionKey).toBe(resolutionKey);
+      expect(restored.output.bitrateMbps).toBe(40);
+
+      const clamped = parseShareUrl(`?preset=hex&res=${resolutionKey}&br=99`, PRESET_MAP, 'hex');
+      expect(clamped.output.bitrateMbps).toBe(40);
+    }
+  );
 });

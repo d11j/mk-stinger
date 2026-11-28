@@ -523,8 +523,9 @@
             </button>
             <button
               class="bg-btn"
+              id="btnBgSideBySide"
               data-bg="side_by_side"
-              title="左に透過映像、右にマスクを並べた 32:9 全体表示"
+              title="左に透過映像、右にマスクを並べたトラックマット全体表示"
             >
               全体 32:9
             </button>
@@ -770,8 +771,15 @@
               <div>
                 <span class="section-label">解像度</span>
                 <select id="selectResolution" class="input-select">
-                  <option value="1080p" selected>1080p (FHD)</option>
-                  <option value="720p">720p (HD)</option>
+                  <optgroup label="横型 (16:9)">
+                    <option value="1080p" selected>1080p (1920×1080)</option>
+                    <option value="1440p">1440p WQHD (2560×1440)</option>
+                    <option value="720p">720p (1280×720)</option>
+                  </optgroup>
+                  <optgroup label="縦型 (9:16)">
+                    <option value="vertical-1080p">縦型 1080p (1080×1920)</option>
+                    <option value="vertical-720p">縦型 720p (720×1280)</option>
+                  </optgroup>
                 </select>
               </div>
               <div>
@@ -809,7 +817,7 @@
               id="inputBitrate"
               class="input-range"
               min="8"
-              max="28"
+              max="40"
               step="2"
               value="16"
             />

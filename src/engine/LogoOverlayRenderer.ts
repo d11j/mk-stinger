@@ -42,7 +42,7 @@ export interface LogoOverlayFrameState {
  */
 export function computeLogoOverlayState(
   progress: number,
-  height: number,
+  baseSize: number,
   options: LogoOverlayOptions
 ): LogoOverlayFrameState {
   const start = clamp01(options.startProgress);
@@ -86,14 +86,14 @@ export function computeLogoOverlayState(
     case 'slide-up':
       alpha = easeInOutCubic(t);
       offsetYPx = isIn
-        ? height * 0.08 * (1 - easeOutBurst(t))
-        : -height * 0.06 * (1 - easeInOutCubic(t));
+        ? baseSize * 0.08 * (1 - easeOutBurst(t))
+        : -baseSize * 0.06 * (1 - easeInOutCubic(t));
       break;
     case 'slide-down':
       alpha = easeInOutCubic(t);
       offsetYPx = isIn
-        ? -height * 0.08 * (1 - easeOutBurst(t))
-        : height * 0.06 * (1 - easeInOutCubic(t));
+        ? -baseSize * 0.08 * (1 - easeOutBurst(t))
+        : baseSize * 0.06 * (1 - easeInOutCubic(t));
       break;
   }
 
@@ -134,12 +134,13 @@ export function renderLogoOverlay(
     return;
   }
 
-  const state = computeLogoOverlayState(progress, height, options);
+  const shortSide = Math.min(width, height);
+  const state = computeLogoOverlayState(progress, shortSide, options);
   if (!state.visible) {
     return;
   }
 
-  const targetLongSide = height * options.scale;
+  const targetLongSide = shortSide * options.scale;
   const fitScale = targetLongSide / Math.max(imgW, imgH);
   const drawW = imgW * fitScale;
   const drawH = imgH * fitScale;
@@ -154,7 +155,7 @@ export function renderLogoOverlay(
 
   if (options.hasShadow && options.shadowBlur > 0) {
     ctx.shadowColor = options.shadowColor;
-    ctx.shadowBlur = options.shadowBlur * (height / 1080);
+    ctx.shadowBlur = options.shadowBlur * (shortSide / 1080);
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
   }

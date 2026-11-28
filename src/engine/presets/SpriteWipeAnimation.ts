@@ -105,6 +105,33 @@ function drawDiamondPath(
   ctx.closePath();
 }
 
+function computeSpriteWipeGeometry(
+  width: number,
+  height: number,
+  options: SpriteWipePresetOptions
+) {
+  const resScale = Math.min(width, height) / 1080;
+  const rad = (options.angleDeg * Math.PI) / 180;
+  const tan = Math.tan(rad);
+  const skewOffset = height * tan;
+
+  const baseLineW = FIXED_LINE_WIDTH * resScale;
+  const baseSize = (options.spriteSize || 96) * resScale;
+  const scatter = (options.spriteScatter ?? 36) * resScale;
+  const glowMargin = options.hasGlow ? (options.glowBlur || 16) * resScale : 0;
+  const extraMargin = Math.max(
+    400 * resScale,
+    scatter + baseSize + options.borderWidth * resScale + glowMargin + 60 * resScale
+  );
+
+  // 移動範囲（画面外左から画面外右まで完全に抜け切るスパン）
+  const startX = -extraMargin;
+  const endX = width + Math.abs(skewOffset) + extraMargin;
+  const currentSpan = endX - startX;
+
+  return { resScale, skewOffset, baseLineW, baseSize, scatter, extraMargin, startX, currentSpan };
+}
+
 export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = {
   id: 'sprite-wipe',
   name: 'DECORATED LINE (デコレーションライン)',
@@ -189,17 +216,8 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
   render(ctx, progress, frameIndex, totalFrames, width, height, options) {
     ctx.clearRect(0, 0, width, height);
 
-    const rad = (options.angleDeg * Math.PI) / 180;
-    const tan = Math.tan(rad);
-    const skewOffset = height * tan;
-
-    const baseLineW = FIXED_LINE_WIDTH;
-    const extraMargin = 400; // 画面外から画面外への移動余白
-
-    // 移動範囲（画面外左から画面外右まで完全に抜け切るスパン）
-    const startX = -extraMargin;
-    const endX = width + Math.abs(skewOffset) + extraMargin;
-    const currentSpan = endX - startX;
+    const { resScale, skewOffset, baseLineW, baseSize, scatter, startX, currentSpan } =
+      computeSpriteWipeGeometry(width, height, options);
 
     const easedP = easeInOutCubic(Math.max(0, Math.min(1, progress)));
     const centerX = startX + currentSpan * easedP;
@@ -220,7 +238,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
     // 発光グロー効果
     if (options.hasGlow) {
       ctx.shadowColor = options.glowColor || options.primaryColor;
-      ctx.shadowBlur = options.glowBlur || 16;
+      ctx.shadowBlur = (options.glowBlur || 16) * resScale;
     }
 
     // メインラインのグラデーション塗り（セカンダリ → プライマリ → アクセント）
@@ -236,13 +254,13 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
     // メインラインの境界線（ボーダー）
     if (options.borderWidth > 0) {
       ctx.strokeStyle = options.borderColor || '#ffffff';
-      ctx.lineWidth = options.borderWidth;
+      ctx.lineWidth = Math.max(0.5, options.borderWidth * resScale);
       linePath();
       ctx.stroke();
 
       // センターの光るハイライトライン
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.lineWidth = Math.max(1, options.borderWidth * 0.5);
+      ctx.lineWidth = Math.max(0.5, options.borderWidth * 0.5 * resScale);
       ctx.beginPath();
       ctx.moveTo(centerX, 0);
       ctx.lineTo(centerX - skewOffset, height);
@@ -251,8 +269,6 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
 
     // 2. デコレーションスプライトの描画
     const count = Math.max(1, options.spriteCount || 16);
-    const baseSize = options.spriteSize || 96;
-    const scatter = options.spriteScatter ?? 36;
     const sizeScatterRate = Math.max(0, Math.min(1, options.sizeScatter ?? 0.4));
     const hasCustomImg =
       options.spriteType === 'custom' &&
@@ -280,7 +296,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
 
       // 個別スプライトのサイズ（基本サイズから散布幅倍率に応じて縮小変化）
       const sizeScale = 1.0 - sizeScatterRate * rnd3;
-      const currentSize = Math.max(8, baseSize * sizeScale);
+      const currentSize = Math.max(4 * resScale, baseSize * sizeScale);
 
       // 自転・回転角
       let angle: number;
@@ -300,7 +316,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
       // 発光設定
       if (options.hasGlow) {
         ctx.shadowColor = options.glowColor || options.accentColor;
-        ctx.shadowBlur = Math.min(options.glowBlur, 16);
+        ctx.shadowBlur = Math.min(options.glowBlur, 16) * resScale;
       } else {
         ctx.shadowBlur = 0;
       }
@@ -352,7 +368,7 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
         // シャープなホワイトボーダー
         if (options.borderWidth > 0) {
           ctx.strokeStyle = options.borderColor || '#ffffff';
-          ctx.lineWidth = Math.max(1, options.borderWidth * 0.6);
+          ctx.lineWidth = Math.max(0.5, options.borderWidth * 0.6 * resScale);
           ctx.stroke();
         }
 
@@ -376,14 +392,11 @@ export const SpriteWipeAnimationPlugin: PresetPlugin<SpriteWipePresetOptions> = 
    * 1本のメインラインの中心 (centerX) を境界として、通過した左側領域を白で塗りつぶす
    */
   renderMatte(ctx, progress, frameIndex, totalFrames, width, height, options) {
-    const rad = (options.angleDeg * Math.PI) / 180;
-    const tan = Math.tan(rad);
-    const skewOffset = height * tan;
-
-    const extraMargin = 400;
-    const startX = -extraMargin;
-    const endX = width + Math.abs(skewOffset) + extraMargin;
-    const currentSpan = endX - startX;
+    const { skewOffset, extraMargin, startX, currentSpan } = computeSpriteWipeGeometry(
+      width,
+      height,
+      options
+    );
 
     const easedP = easeInOutCubic(Math.max(0, Math.min(1, progress)));
     const centerX = startX + currentSpan * easedP;

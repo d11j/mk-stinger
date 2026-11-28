@@ -52,9 +52,10 @@ let cachedCells: HexCell[] = [];
 let lastKey = '';
 
 function getHexCells(width: number, height: number): HexCell[] {
-  // 六角形の高さは、画面の高さの 1/3 (SPEC.md 要件)
-  // Pointy-topped Hex: 頂点対頂点の全高は 2 * r なので、2 * r = height / 3 => r = height / 6
-  const targetH = height / 3;
+  // 六角形の高さは短辺の 1/3（16:9 横型では画面高さの 1/3、9:16 縦型でも均等な密度を維持）
+  // Pointy-topped Hex: 頂点対頂点の全高は 2 * r なので、2 * r = shortSide / 3 => r = shortSide / 6
+  const shortSide = Math.min(width, height);
+  const targetH = shortSide / 3;
   const r = targetH / 2; // 外接円半径
   const hexWidth = Math.sqrt(3) * r; // 水平幅
   const vertSpacing = (3 / 2) * r; // 垂直間隔 (75% of H)
@@ -217,13 +218,14 @@ export const HexAnimationPlugin: PresetPlugin<HexPresetOptions> = {
 
       // ボーダー & グロー効果
       if (options.borderWidth > 0) {
+        const resScale = Math.min(width, height) / 1080;
         ctx.strokeStyle = options.borderColor;
-        ctx.lineWidth = options.borderWidth;
+        ctx.lineWidth = Math.max(0.5, options.borderWidth * resScale);
         ctx.lineJoin = 'miter';
 
         if (options.hasGlow && scale > 0.5) {
           ctx.shadowColor = options.glowColor;
-          ctx.shadowBlur = options.glowBlur;
+          ctx.shadowBlur = options.glowBlur * resScale;
         }
 
         ctx.stroke();

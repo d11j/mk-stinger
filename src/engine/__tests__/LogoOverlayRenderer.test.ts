@@ -160,4 +160,30 @@ describe('LogoOverlayRenderer', () => {
     expect(Math.abs(centerX - width * 0.7)).toBeLessThanOrEqual(2);
     expect(Math.abs(centerY - height * 0.35)).toBeLessThanOrEqual(2);
   });
+
+  it('縦型解像度 (9:16) でも短辺基準でスケーリングされ横幅からはみ出さないこと', () => {
+    const vWidth = 180;
+    const vHeight = 320;
+    const img = createMockLogoImage(200, 100);
+    const options: LogoOverlayOptions = {
+      ...DEFAULT_LOGO_OVERLAY_OPTIONS,
+      enabled: true,
+      image: img,
+      scale: 0.8, // 短辺 180 * 0.8 = 144px（高さ基準なら 256px で横幅をはみ出していた）
+      hasShadow: false,
+    };
+
+    const canvas = createCanvas(vWidth, vHeight);
+    const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D;
+    renderLogoOverlay(ctx, 0.5, vWidth, vHeight, options);
+
+    const bounds = getOpaquePixelBounds(canvas);
+    const drawnW = bounds.maxX - bounds.minX + 1;
+    const drawnH = bounds.maxY - bounds.minY + 1;
+
+    expect(Math.abs(drawnW - 144)).toBeLessThanOrEqual(2);
+    expect(Math.abs(drawnH - 72)).toBeLessThanOrEqual(2);
+    expect(bounds.minX).toBeGreaterThan(0);
+    expect(bounds.maxX).toBeLessThan(vWidth - 1);
+  });
 });
