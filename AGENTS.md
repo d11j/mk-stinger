@@ -193,7 +193,7 @@ mk-stinger/
 ├── index.html                   // メインHTML（スタジオUI・タイムライン・OBS設定カード・モーダル）
 ├── package.json                 // 依存関係・テスト/Lint/Formatスクリプト（mediabunny, vitest 等）
 ├── tsconfig.json                // TS設定
-├── vite.config.ts               // Vite設定
+├── vite.config.ts               // Vite設定（ビルド時の HTML 出力名を dist/mk-stinger.html へ変更）
 ├── vitest.config.ts             // Vitest設定
 ├── eslint.config.js             // ESLint設定
 ├── .prettierrc                  // Prettier設定
@@ -213,12 +213,14 @@ mk-stinger/
     │   │   └── __tests__/       // イージングのユニットテスト
     │   └── presets/
     │       ├── index.ts         // プリセット一覧レジストリ
+    │       ├── FadeAnimation.ts // シンプルフェード（クロスフェード / カラーフェード、ロゴ向け）
+    │       ├── ShutterGateAnimation.ts // レイヤーシャッターゲート（ホールド＆衝突フラッシュ、既定プリセット）
     │       ├── HexAnimation.ts  // 必須要件のHEXハニカム充填
+    │       ├── HyperJumpAnimation.ts // ハイパージャンプ（収縮リング＋中心フラッシュ展開）
     │       ├── LineWipeAnimation.ts // 斜めラインワイプ（トラックマット特化・非全面被覆型）
     │       ├── SpriteWipeAnimation.ts // デコレーションラインワイプ（1本線＋星/ハート/画像スプライト装飾）
-    │       ├── HyperJumpAnimation.ts // ハイパージャンプ（収縮リング＋中心フラッシュ展開）
-    │       ├── SlashAnimation.ts// 斜めスライス＆スピードライン
     │       ├── GlitchAnimation.ts// サイバーグリッド
+    │       ├── SlashAnimation.ts// 斜めスライス＆スピードライン
     │       └── __tests__/       // 全プリセットの境界フレーム・renderMatte検証テスト
     ├── state/
     │   ├── PresetStateStore.ts  // プリセット別ドラフト・カラー引き継ぎ & 共通ロゴ状態管理
